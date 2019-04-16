@@ -1,3 +1,5 @@
+import json
+import codecs
 import socket
 import ssl
 import requests
@@ -35,15 +37,23 @@ class CrawlerMovies:
         self.depth=2
         self.doubanLink = 'https://movie.douban.com/subject_search?search_text='
         self.imdbLink='https://www.imdb.com/title/'
+        self.movieFile='movies.txt'
         #self.doubanLink = 'https://movie.douban.com/'
     def fetchPage(self, url):
         header = {'content-type': 'charset=utf8'}
-        response = requests.get(url, headers=header)
+        try:
+            response = requests.get(url, headers=header)
+        except:
+            print('can not open the link: '+url)
+            response=None
+            pass
         return response
 
     def parse(self, url):
         response=self.fetchPage(url)
-        print(response.encoding)
+        if response is None:
+            return
+        #print(response.encoding)
         response.encoding = 'GBK'
         movie=b''
 
@@ -133,17 +143,19 @@ class CrawlerMovies:
             for name in self.movieMapQueqe[spec].keys():
                 movie=self.movieMapQueqe[spec][name]['title']
                 driver.get(self.doubanLink + movie)
-                elem = driver.find_element_by_xpath('//span[@class="rating_nums"]')
-                if elem:
-                    rank = elem.text
-                    movie['dbanrank'] = rank
-                if 'imdb' in movie:
-                    driver.get(self.imdbLink + movie)
+                try:
                     elem = driver.find_element_by_xpath('//span[@class="rating_nums"]')
                     if elem:
                         rank = elem.text
-                        movie['imdbrank'] = rank
-
+                        movie=self.movieMapQueqe[spec][name]['dbanrank'] = rank
+                    #if 'imdb' in movie:
+                    #    driver.get(self.imdbLink + movie)
+                    #    elem = driver.find_element_by_xpath('//div[@class="ratingValue"]/strong/span[@itemprop="ratingValue"]')
+                    #    if elem:
+                    #        rank = elem.text
+                    #        movie=self.movieMapQueqe[spec][name]['imdbrank'] = rank
+                except:
+                    pass
         driver.close()
         driver.quit()
 
@@ -193,7 +205,7 @@ class CrawlerMovies:
         #print(searchContent.get_attribute('href'))
         #print(searchContent.get_attribute('name'))
         elem=driver.find_element_by_xpath('//span[@class="rating_nums"]')
-        print(elem.text)
+        #print(elem.text)
         #driver.get(self.doubanLink + 'cry')
         #time.sleep(5)
         #href=elem.get_attribute('href')
@@ -209,54 +221,55 @@ class CrawlerMovies:
             #print(link)
 
     def getMovieDetail(self, url):
-        print(url)
+        #print(url)
         response = self.fetchPage(url)
-        page = response.content
-        print(page)
-        htmlText = etree.HTML(page, parser=etree.HTMLParser())
-        path = '//ul[@class="downurl"]/li/a'
-        allDetail={}
-        downLinkMap={}
-        for link in htmlText.xpath(path):
-            #print(link)
-            #print(link.get('href'))
-            #print(link.get('title'))
-            href=link.get('href')
-            title=link.get('title')
-            downLinkMap[title]=href
-            #return downLinkMap
-        if downLinkMap:
-            allDetail['download']=downLinkMap
+        response.encoding = 'GBK'
+        downLinkMap = {}
+        allDetail = {}
+        nameIndex=1
+        for link in Selector(response=response).xpath('//a[contains(@href,"thunder") or contains(@href,"ed2k") or contains(@href,"magnet")]'):
+            if 'href' in link.attrib:
+                href=link.attrib['href']
+            #urls=link.xpath('a/@href').extract()
+            if 'title' in link.attrib:
+                title = link.attrib['title']
+            if href and title:
+                if title not in downLinkMap.keys():
+                    downLinkMap[title] = href
+                    allDetail['download'] = downLinkMap
+                elif downLinkMap[title] != href:
+                    newTitle=title+str(nameIndex)
+                    downLinkMap[newTitle] = href
+                    allDetail['download'] = downLinkMap
+                    nameIndex+=1
+
         path='//div[@class="neirong"]/p'
-        details=htmlText.xpath(path)
+        details=Selector(response=response).xpath(path)
         #print('neirong')
 
         #print(details[0].text)
         description = ''
         descriptionFound = False
         if details:
-            print(details[0])
-            print(details[0].text)
-            if details[0].text:
-                detail=details[0].text.split(':', 1)
+            #print(details[0])
+            #print(details[0].text)
+            de = details[0].xpath('text()')
+            for text in details[0].xpath('text()').extract():
+                detail=text.split(':', 1)
                 if len(detail)>1:
-                    allDetail[detail[0]]=detail[1]
-                else:
-                    description=details[0].text
+                    if 'IMDB' in detail[0].upper():
+                        allDetail['imdb'] = detail[1]
 
-            for br in htmlText.xpath('//div[@class="neirong"]/p/br'):
-                #print(br.tail)
-                if br and br.tail:
-                    print (br)
-                    print(br.attrib)
-                    if "剧情简介" in br.tail:
-                        descriptionFound=True
-                    elif descriptionFound:
-                        description=description+br.tail
                     else:
-                        detail = br.tail.split(':', 1)
-                        if len(detail) > 1:
-                            allDetail[detail[0]] = detail[1]
+                        allDetail[detail[0]]=detail[1]
+                elif not allDetail:
+                    description=text
+                    break
+                if "剧情简介" in text:
+                    descriptionFound=True
+                    continue
+                if descriptionFound:
+                    description=text
             if description:
                 allDetail['剧情']=description
                 #print(allDetail)
@@ -271,30 +284,41 @@ class CrawlerMovies:
                 self.movieMapQueqe[spec][name]['details']=self.getMovieDetail(url)
                 movieLinks.append(url)
 
+    def saveAllMoiveToFile(self, fileName=None):
+        if fileName:
+            filePath=fileName
+        else:
+            filePath=self.movieFile
+        js = json.dumps(self.movieMapQueqe,ensure_ascii=False)
+        with codecs.open(filePath, 'w',encoding='utf-8') as file:
+            file.write(js)
+            file.close()
+
+    def getAllMoiveFromFile(self, fileName=None):
+        if fileName:
+            filePath=fileName
+        else:
+            filePath=self.movieFile
+        with codecs.open(filePath, 'r',encoding='utf-8') as file:
+            js = file.read()
+            self.movieMapQueqe = json.loads(js)
+            file.close()
+
 if __name__=='__main__':
     t1=time.time()
     crawlerM=CrawlerMovies()
     crawlerM.parseMainPage('https://www.loldytt.tv/')
-    crawlerM.parse('https://www.loldytt.tv/Zuixinriju/')
     crawlerM.parseChildPage()
     crawlerM.parseMoviesRank()
     crawlerM.getAllMovieDetail()
-
-    #print(crawlerM.getAllMovieLinks())
-    #keywords = {
-    #    'search_text': '九品芝麻官',
-    #
-    #}
-
-    #headers = {'user-agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 \
-    #           (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
-    #print(crawlerM.getMovieQueue())
-    #html_post = requests.post(crawlerM.doubanLink, data=keywords)
-    #print(html_post.content)
-    #ret=crawlerM.getMovieRank('九品芝麻官')
-    #print(ret)
-    #crawlerM.getMovieDetail('https://www.loldytt.tv/Juqingdianying/HYLDMWZ/')
+    crawlerM.saveAllMoiveToFile()
+    #print(crawlerM.getMovieDetail('https://www.loldytt.tv/Xijudianying/FCRS/'))
     t2 = time.time()
     t=t2-t1
     print(crawlerM.getMovieQueue())
     print(t)
+    print('get all')
+    crawlerN = CrawlerMovies()
+    crawlerN.getAllMoiveFromFile()
+    crawlerN.saveAllMoiveToFile('newmovie.txt')
+    #print(crawlerM.getMovieQueue())
