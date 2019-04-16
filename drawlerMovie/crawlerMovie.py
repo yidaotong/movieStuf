@@ -34,98 +34,55 @@ class CrawlerMovies:
         self.movieMapQueqe={}
         self.depth=2
         self.doubanLink = 'https://movie.douban.com/subject_search?search_text='
+        self.imdbLink='https://www.imdb.com/title/'
         #self.doubanLink = 'https://movie.douban.com/'
     def fetchPage(self, url):
-        #sock = ssl.wrap_socket(socket.socket())
-        #sock=socket.socket()
-        response = requests.get(url)
-        #print('return')
-        #request = 'GET {} HTTP/1.0\r\nHost:www.loldytt.tv\r\n\r\n'.format(url)
-        #response=b''
-        #chunk=sock.recv(4096)
-        #while chunk:
-            #response += chunk
-            #chunk=sock.recv(4096)
-        #link = self.parseLink(response)
-        #print(response)
+        header = {'content-type': 'charset=utf8'}
+        response = requests.get(url, headers=header)
         return response
-        #self.movieMapQueqe.add(link)
-        
-    def parse(self, url):
-        #response = HtmlResponse(url=url, type="html")
 
+    def parse(self, url):
         response=self.fetchPage(url)
-        #page=response.content
-        #print(page)
-        #htmlText=etree.HTML(page, parser=etree.HTMLParser())
-        #print(chardet.detect(htmlText))
-        #print(htmlText)
-        #pp = pprint.PrettyPrinter(indent=4)
-        #print('pprint:')
-        
-        #pp.pprint(htmlText)
-        #print('end pprint:')
+        print(response.encoding)
+        response.encoding = 'GBK'
         movie=b''
 
-        path='//a'
-        #htmlText.findall('a')
-        for link in Selector(response=response).xpath('//a'):
-            print(link)
-            if 'href' in link.attrib:
-                url=link.get('href')
-            #print(url)
-            #if self.depth == 1:
-                #print('depth=2')
-
+        for link in Selector(response=response).xpath('//ul/li'):
+            #print(link)
+            urls=link.xpath('a/@href').extract()
+            if urls:
+                url=urls[0]
+            if self.depth == 1:
+                print('depth=2')
+            else:
                 if url:
-                    if 'TS9JSTSYKTSB2' in url:
-                        print('find TS9JSTSYKTSB2')
-                    if 'WTTDJAYDGS' in url:
-                        print('find WTTDJAYDGS')
-                    #print(link.get('href'))
                     pattenLink=r""+self.rootLink+"(\w+)/$"
                     pattenMovie=r""+self.rootLink+"(\w+)/(\w+)/$"
-                    #print(pattenLink)
-                    #print(pattenMovie)
                     reLink=re.match(pattenLink,url.strip())
                     reMovie=re.match(pattenMovie,url.strip())
-                    #print(reMovie)
 
                     if self.depth == 1 and reLink and reLink.lastindex==1:
-                        #print(reLink.group(1))
                         spec=reLink.group(1)
                         if spec not in self.movieMapQueqe:
                             self.movieMapQueqe[spec]={}
                     elif reMovie and reMovie.lastindex==2:
-                        #print("movie link found")
-                        #print (reMovie.group(0))
-                        #print(reMovie.group(1))
-                        #print(reMovie.group(2))
                         spec=reMovie.group(1)
                         movie=reMovie.group(2)
                         if spec not in self.movieMapQueqe:
                             self.movieMapQueqe[spec]={}
                         if movie not in self.movieMapQueqe[spec]:
-                            title=link.get('title')
-                            if title:
-                                self.movieMapQueqe[spec][movie] = {'title': title}
+                            titles=link.xpath('a/@title').extract()
+                            if titles:
+                                self.movieMapQueqe[spec][movie] = {'title': titles[0]}
                             else:
-                                fullText=link.xpath('text()')
-                                if fullText:
-                                    text = fullText[0]
+                                fullTexts=link.xpath('a/text()').extract()
+                                if fullTexts:
+                                    text = fullTexts[0]
                                 if text:
                                     title=text
-                                    #print('title found')
-                                    #print(title)
                                     self.movieMapQueqe[spec][movie] = {'title': title}
                                 else:
-                                    #print('not title, get attrib')
-                                    #print(link.attrib)
                                     self.movieMapQueqe[spec][movie] = {'title': b''}
-                        #elif not self.movieMapQueqe[spec][movie]:
-                            #self.movieMapQueqe[spec][movie]=b''
-        print('lastone:')
-        print(movie)
         return b''
     
     def parseMainPage(self, url):
@@ -159,9 +116,36 @@ class CrawlerMovies:
         return response.content
 
     def parseMoviesRank(self):
+        capabilities = DesiredCapabilities.CHROME.copy()
+        capabilities['acceptSslCerts'] = True
+        capabilities['acceptInsecureCerts'] = True
+        chrome_options = Options()
+        chrome_prefs = {}
+        chrome_options.experimental_options["prefs"] = chrome_prefs
+        chrome_prefs["profile.default_content_settings"] = {"images": 2}
+        chrome_prefs["profile.managed_default_content_settings"] = {"images": 2}
+        #chrome_options.add_argument('--headless')
+        chrome_options.add_argument("--window-size=800,400")
+        chrome_options.add_argument('--disable-gpu')
+        #chrome_options.add_argument("--proxy-server=127.0.0.1:8080")
+        driver = webdriver.Chrome(options=chrome_options, desired_capabilities=capabilities)
         for spec in self.movieMapQueqe.keys():
             for name in self.movieMapQueqe[spec].keys():
                 movie=self.movieMapQueqe[spec][name]['title']
+                driver.get(self.doubanLink + movie)
+                elem = driver.find_element_by_xpath('//span[@class="rating_nums"]')
+                if elem:
+                    rank = elem.text
+                    movie['dbanrank'] = rank
+                if 'imdb' in movie:
+                    driver.get(self.imdbLink + movie)
+                    elem = driver.find_element_by_xpath('//span[@class="rating_nums"]')
+                    if elem:
+                        rank = elem.text
+                        movie['imdbrank'] = rank
+
+        driver.close()
+        driver.quit()
 
     def getAllMoviesRank(self, movieList):
         capabilities = DesiredCapabilities.CHROME.copy()
@@ -254,7 +238,7 @@ class CrawlerMovies:
             print(details[0])
             print(details[0].text)
             if details[0].text:
-                detail=details[0].text.split(':',1)
+                detail=details[0].text.split(':', 1)
                 if len(detail)>1:
                     allDetail[detail[0]]=detail[1]
                 else:
@@ -290,11 +274,11 @@ class CrawlerMovies:
 if __name__=='__main__':
     t1=time.time()
     crawlerM=CrawlerMovies()
-    #crawlerM.parseMainPage('https://www.loldytt.tv/')
+    crawlerM.parseMainPage('https://www.loldytt.tv/')
     crawlerM.parse('https://www.loldytt.tv/Zuixinriju/')
-    #crawlerM.parseChildPage()
-    #crawlerM.parseMoviesRank()
-    #crawlerM.getAllMovieDetail()
+    crawlerM.parseChildPage()
+    crawlerM.parseMoviesRank()
+    crawlerM.getAllMovieDetail()
 
     #print(crawlerM.getAllMovieLinks())
     #keywords = {
