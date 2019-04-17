@@ -23,8 +23,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver import DesiredCapabilities
 from scrapy.selector import Selector
 from scrapy.http import HtmlResponse
-
-
+import optparse
+import os
+from datetime import datetime as dt
 
 class CrawlerMovies:
     def __init__(self, link=b''):
@@ -37,7 +38,9 @@ class CrawlerMovies:
         self.depth=2
         self.doubanLink = 'https://movie.douban.com/subject_search?search_text='
         self.imdbLink='https://www.imdb.com/title/'
-        self.movieFile='movies.txt'
+        self.movieStoreFile= 'movies.txt'
+        self.movieWriteFile = 'movies.txt'
+        self.cmdParser=None
         #self.doubanLink = 'https://movie.douban.com/'
     def fetchPage(self, url):
         header = {'content-type': 'charset=utf8'}
@@ -288,7 +291,7 @@ class CrawlerMovies:
         if fileName:
             filePath=fileName
         else:
-            filePath=self.movieFile
+            filePath=self.movieWriteFile
         js = json.dumps(self.movieMapQueqe,ensure_ascii=False)
         with codecs.open(filePath, 'w',encoding='utf-8') as file:
             file.write(js)
@@ -298,27 +301,141 @@ class CrawlerMovies:
         if fileName:
             filePath=fileName
         else:
-            filePath=self.movieFile
+            filePath=self.movieStoreFile
         with codecs.open(filePath, 'r',encoding='utf-8') as file:
             js = file.read()
             self.movieMapQueqe = json.loads(js)
             file.close()
+    def argumentsParse(self, argv):
+        self.cmdParser = optparse.OptionParser()
+        self.cmdParser.add_option("-f", "--file", dest="writeFile",  default="movies.txt",
+                          help="write movie info to FILE", metavar="FILE")
+        self.cmdParser.add_option("-r", "--read", dest="readFile",
+                          help="read movie info from File", metavar="FILE")
+        self.cmdParser.add_option("-s", "--search", dest="search",
+                          help="search movies list split by ,")
+        self.cmdParser.add_option("-a", "--rank", dest="rank",
+                          help="search movies lowest rank")
+        self.cmdParser.add_option("-d", "--date", dest="dateSince",
+                          help="list movies since the date given, e.g 2018-01-09")
+        self.cmdParser.add_option("-n", "--newest", dest="newest",
+                          help="list the newest movies account given, e.g 20")
+        (options, args) = self.cmdParser.parse_args(sys.argv)
+        return options
+
+    def getMovieDetailByList(self, movies):
+        account = 0
+        for movie in movies:
+            for spec in self.movieMapQueqe:
+                for m in self.movieMapQueqe[spec]:
+                    if 'title' in self.movieMapQueqe[spec][m]:
+                        if movie in self.movieMapQueqe[spec][m]['title']:
+                            print(self.movieMapQueqe[spec][m])
+                            self.printMovieDetail(self.movieMapQueqe[spec][m])
+                            account += 1
+        print(account)
+
+    def getMovieDetailByRank(self, rank):
+        account=0
+        for spec in self.movieMapQueqe:
+            for m in self.movieMapQueqe[spec]:
+                if 'dbanrank' in self.movieMapQueqe[spec][m]:
+                    if float(rank) <= float(self.movieMapQueqe[spec][m]['dbanrank']):
+                        self.printMovieDetail(self.movieMapQueqe[spec][m])
+                        account += 1
+        print(account)
+
+    def printMovieDetail(self, movieMap):
+        if 'title' in movieMap:
+            print(movieMap['title'] + ':')
+            for item in movieMap:
+                if item != 'title':
+                    if item == 'details':
+                        print('下载链接：')
+                        for link in movieMap['details']['download']:
+                            print('\t'+link+':'+movieMap['details']['download'][link])
+                        if '剧情' in movieMap['details']:
+                            print('剧情： '+ movieMap['details']['剧情'])
+                    elif item == 'dbanrank':
+                        print('豆瓣评分' + ':' + movieMap[item])
+        else:
+            print('not title found')
+
+    def createMovieListByDate(self):
+        movieMapList={}
+        for spec in self.movieMapQueqe:
+            if spec not in movieMapList:
+                movieMapList[spec]=[]
+            for m in self.movieMapQueqe[spec]:
+                curDate=self.getMovieDate(self.movieMapQueqe[spec][m])
+                if curDate:
+                    if not movieMapList[spec]:
+                        movieMapList[spec].append(self.movieMapQueqe[spec][m])
+                    else:
+                        for index in range(0, len(movieMapList[spec])):
+                            dateStr = self.getMovieDate(movieMapList[spec][index])
+                            if dt.strptime(dateStr, "%Y-%m-%d") > dt.strptime(curDate, "%Y-%m-%d"):
+                                movieMapList[spec].insert(index, self.movieMapQueqe[spec][m])
+                else:
+                    print('no details find for:'+self.movieMapQueqe[spec][m]['title'])
+                    print(spec)
+                    print(self.movieMapQueqe[spec][m])
+        return movieMapList
+
+    def getMovieDate(self, movieInfo):
+        if 'details' in movieInfo:
+            if '上映日期' in movieInfo['details']:
+                dateStr = movieInfo['details']['上映日期']
+            elif '首播' in movieInfo['details']:
+                dateStr = movieInfo['details']['首播']
+            else:
+                dateStr=None
+            if dateStr:
+                reDate = re.search(r'(\d+-\d+-\d+)', dateStr)
+                if reDate:
+                    da = reDate.group(1)
+                    return da
+            else:
+                print('no date find for:' + movieInfo['title'])
+                print(movieInfo)
+
 
 if __name__=='__main__':
+
     t1=time.time()
     crawlerM=CrawlerMovies()
-    crawlerM.parseMainPage('https://www.loldytt.tv/')
-    crawlerM.parseChildPage()
-    crawlerM.parseMoviesRank()
-    crawlerM.getAllMovieDetail()
-    crawlerM.saveAllMoiveToFile()
+    options = crawlerM.argumentsParse(sys.argv)
+    if options.writeFile and not options.readFile:
+        crawlerM.parseMainPage('https://www.loldytt.tv/')
+        crawlerM.parseChildPage()
+        crawlerM.parseMoviesRank()
+        crawlerM.getAllMovieDetail()
+        crawlerM.saveAllMoiveToFile(options.writeFile)
+    if options.readFile:
+        if os.path.exists(options.readFile):
+            crawlerM.getAllMoiveFromFile(options.readFile)
+        else:
+            crawlerM.getAllMoiveFromFile()
+
+    if options.search:
+        movies = options.search.split(':')
+        print(movies)
+        crawlerM.getMovieDetailByList(movies)
+
+    if options.rank:
+        print(options.rank)
+        crawlerM.getMovieDetailByRank(options.rank)
+
+    print(crawlerM.createMovieListByDate())
     #print(crawlerM.getMovieDetail('https://www.loldytt.tv/Xijudianying/FCRS/'))
     t2 = time.time()
     t=t2-t1
-    print(crawlerM.getMovieQueue())
+    #print(crawlerM.getMovieQueue())
     print(t)
     print('get all')
     crawlerN = CrawlerMovies()
+
+
     crawlerN.getAllMoiveFromFile()
-    crawlerN.saveAllMoiveToFile('newmovie.txt')
+    #crawlerN.saveAllMoiveToFile('newmovie.txt')
     #print(crawlerM.getMovieQueue())
