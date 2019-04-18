@@ -27,6 +27,7 @@ import optparse
 import os
 from datetime import datetime as dt
 import operator
+import random
 
 class CrawlerMovies:
     def __init__(self, link=b''):
@@ -42,6 +43,7 @@ class CrawlerMovies:
         self.imdbLink='https://www.imdb.com/title/'
         self.movieStoreFile= 'movies.txt'
         self.movieWriteFile = 'movies.txt'
+        self.rankRenew = False
         self.cmdParser=None
         #self.doubanLink = 'https://movie.douban.com/'
     def fetchPage(self, url):
@@ -151,47 +153,27 @@ class CrawlerMovies:
                 movie=self.movieMapQueqe[spec][name]['title']
                 det = self.movieMapQueqe[spec][name]
                 if 'imdb' in self.movieMapQueqe[spec][name]['details']:
-                    driver.get(self.imdbLink + self.movieMapQueqe[spec][name]['details']['imdb'])
+                    if self.rankRenew or  'imdbrank' not in self.movieMapQueqe[spec][name]:
+                        driver.get(self.imdbLink + self.movieMapQueqe[spec][name]['details']['imdb'])
+                        try:
+                            elem = driver.find_element_by_xpath(
+                                '//div[@class="ratingValue"]/strong/span[@itemprop="ratingValue"]')
+                            if elem:
+                                rank = elem.text
+                                self.movieMapQueqe[spec][name]['imdbrank'] = rank
+                        except:
+                            pass
+                if self.rankRenew or 'dbanrank' not in self.movieMapQueqe[spec][name]:
+                    driver.get(self.doubanLink + movie)
                     try:
-                        elem = driver.find_element_by_xpath(
-                            '//div[@class="ratingValue"]/strong/span[@itemprop="ratingValue"]')
+                        elem = driver.find_element_by_xpath('//span[@class="rating_nums"]')
                         if elem:
                             rank = elem.text
-                            self.movieMapQueqe[spec][name]['imdbrank'] = rank
+                            self.movieMapQueqe[spec][name]['dbanrank'] = rank
                     except:
                         pass
-                driver.get(self.doubanLink + movie)
-                try:
-                    elem = driver.find_element_by_xpath('//span[@class="rating_nums"]')
-                    if elem:
-                        rank = elem.text
-                        self.movieMapQueqe[spec][name]['dbanrank'] = rank
-                except:
-                    pass
-        driver.close()
-        driver.quit()
-
-    def getAllMoviesRank(self, movieList):
-        capabilities = DesiredCapabilities.CHROME.copy()
-        capabilities['acceptSslCerts'] = True
-        capabilities['acceptInsecureCerts'] = True
-        chrome_options = Options()
-        chrome_prefs = {}
-        chrome_options.experimental_options["prefs"] = chrome_prefs
-        chrome_prefs["profile.default_content_settings"] = {"images": 2}
-        chrome_prefs["profile.managed_default_content_settings"] = {"images": 2}
-        #chrome_options.add_argument('--headless')
-        chrome_options.add_argument("--window-size=800,400")
-        chrome_options.add_argument('--disable-gpu')
-        #chrome_options.add_argument("--proxy-server=127.0.0.1:8080")
-        driver = webdriver.Chrome(options=chrome_options, desired_capabilities=capabilities)
-        for movie in movieList:
-            driver.get(self.doubanLink + movie)
-            elem = driver.find_element_by_xpath('//span[@class="rating_nums"]')
-            rank=b''
-            if elem:
-                rank=elem.text
-                movie['rank'] = rank
+                t=random.randint(1,5)
+                time.sleep(t)
         driver.close()
         driver.quit()
 
@@ -331,6 +313,8 @@ class CrawlerMovies:
             filePath=fileName
         else:
             filePath=self.movieWriteFile
+        if os.path.exists(filePath):
+            os.remove(filePath)
         js = json.dumps(self.movieMapQueqe,ensure_ascii=False)
         with codecs.open(filePath, 'w',encoding='utf-8') as file:
             file.write(js)
@@ -347,9 +331,9 @@ class CrawlerMovies:
             file.close()
     def argumentsParse(self, argv):
         self.cmdParser = optparse.OptionParser()
-        self.cmdParser.add_option("-f", "--file", dest="writeFile",  default="movies.txt",
+        self.cmdParser.add_option("-f", "--file", dest="writeFile", default="movies.txt",
                           help="write movie info to FILE", metavar="FILE")
-        self.cmdParser.add_option("-r", "--read", dest="readFile",
+        self.cmdParser.add_option("-r", "--read", dest="readFile", default="movies.txt",
                           help="read movie info from File", metavar="FILE")
         self.cmdParser.add_option("-s", "--search", dest="search",
                           help="search movies list split by ,")
@@ -449,19 +433,20 @@ if __name__=='__main__':
     t1=time.time()
     crawlerM=CrawlerMovies()
     options = crawlerM.argumentsParse(sys.argv)
-    if options.writeFile and not options.readFile:
-        crawlerM.parseMainPage('https://www.loldytt.tv/')
-        crawlerM.parseChildPage()
-        crawlerM.getAllMovieDetail()
-        crawlerM.parseMoviesRank()
-        crawlerM.saveAllMoiveToFile(options.writeFile)
+    if options.writeFile:
+        crawlerM.movieWriteFile=options.writeFile
     if options.readFile:
         if os.path.exists(options.readFile):
+            crawlerM.movieWriteFile = options.readFile
             crawlerM.getAllMoiveFromFile(options.readFile)
-        else:
-            crawlerM.getAllMoiveFromFile()
-            print(crawlerM.getMovieDetail('https://www.loldytt.tv/Dongzuodianying/LLDRM/'))
-            print(crawlerM.getMovieDetail('https://www.loldytt.tv/Dongzuodianying/XBYZ/'))
+
+    crawlerM.parseMainPage('https://www.loldytt.tv/')
+    crawlerM.parseChildPage()
+    crawlerM.getAllMovieDetail()
+    crawlerM.parseMoviesRank()
+    crawlerM.saveAllMoiveToFile(options.writeFile)
+    #print(crawlerM.getMovieDetail('https://www.loldytt.tv/Dongzuodianying/LLDRM/'))
+    #print(crawlerM.getMovieDetail('https://www.loldytt.tv/Dongzuodianying/XBYZ/'))
     crawlerM.createMovieListByDate()
 
     if options.search:
@@ -486,9 +471,9 @@ if __name__=='__main__':
     #print(crawlerM.getMovieQueue())
     print(t)
     print('get all')
-    crawlerN = CrawlerMovies()
+    #crawlerN = CrawlerMovies()
 
 
-    crawlerN.getAllMoiveFromFile()
+    #crawlerN.getAllMoiveFromFile()
     #crawlerN.saveAllMoiveToFile('newmovie.txt')
     #print(crawlerM.getMovieQueue())
