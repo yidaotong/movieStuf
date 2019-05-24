@@ -46,10 +46,10 @@ class CrawlerMovies:
         self.rankRenew = False
         self.cmdParser=None
         #self.doubanLink = 'https://movie.douban.com/'
-    def fetchPage(self, url):
+    def fetchPage(self, url, callback):
         header = {'content-type': 'charset=utf8'}
         try:
-            response = requests.get(url, headers=header)
+            scrapy.Request.get(url, headers=header)
         except:
             print('can not open the link: '+url)
             response=None
