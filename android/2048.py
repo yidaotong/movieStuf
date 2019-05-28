@@ -1,4 +1,4 @@
-import curses
+#import curses
 from random import randrange, choice
 from collections import defaultdict
 import kivy
@@ -35,6 +35,7 @@ class MyApp(App):
             return 'Exit'
 
     def build(self):
+        print("test")
         return Label(text='Hello world')
 
 
