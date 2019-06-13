@@ -1,6 +1,7 @@
 import wx
 import os
 import tkinter as tk
+import wx.grid as grid
 
 class CompareApp(wx.Frame):
 
@@ -90,11 +91,12 @@ class CompareApp(wx.Frame):
             else:
                 return
             self.getAllFileListByPath(pathname)
+            fileList = [0 for i in range(len(self.fileLists))]
             for i in range(len(self.fileLists)):
-                self.fileLists[i]=(self.fileLists[i], os.path.getsize(self.fileLists[i]))
-            self.fileLists.sort(key=lambda filename: filename[1], reverse=True)
-            for i in range(len(self.fileLists)):
-                self.fileListsp[i] = self.fileLists[i][0]
+                fileList[i]=(self.fileLists[i], os.path.getsize(self.fileLists[i]))
+            fileList.sort(key=lambda filename: filename[1], reverse=True)
+            for i in range(len(fileList)):
+                self.fileLists[i] = fileList[i][0]
             print(self.fileLists)
             self.filebox.Set(self.fileLists)
 
