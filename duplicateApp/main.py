@@ -2,11 +2,13 @@ import wx
 import os
 import tkinter as tk
 import wx.grid as grid
+import wx.lib.inspection
+
 
 class CompareApp(wx.Frame):
 
     def __init__(self, parent, title):
-        super(CompareApp, self).__init__(parent, title=title, size=(600, 450))
+        super(CompareApp, self).__init__(parent, title=title, size=(1200, 800))
         self.fileLists=[]
 
         self.InitUI()
@@ -46,10 +48,19 @@ class CompareApp(wx.Frame):
         vbox.Add((-1, 10))
 
         hbox3 = wx.BoxSizer(wx.HORIZONTAL)
-        self.filebox = wx.CheckListBox(panel, choices=self.fileLists, style=wx.LB_MULTIPLE, name="listBox")
+        self.grid = MyGrid(panel)
+        self.grid.setAttribute(2)
+
+        #self.grid.CreateGrid(100, 10);
+        #self.grid.SetRowSize(0, 60)
+        #self.grid.SetColSize(0, 120)
+        #self.filebox = wx.CheckListBox(panel, choices=self.fileLists, style=wx.LB_MULTIPLE, name="listBox")
         #tc2 = wx.TextCtrl(panel, style=wx.TE_MULTILINE)
-        hbox3.Add(self.filebox, proportion=1, flag=wx.EXPAND)
-        vbox.Add(hbox3, proportion=1, flag=wx.LEFT | wx.RIGHT | wx.EXPAND, border=10)
+        hbox3.Add(self.grid, proportion=1, flag=wx.EXPAND|wx.ALL)
+        hbox3.Fit(panel)
+        vbox.Add(hbox3, proportion=1, flag=wx.EXPAND | wx.RIGHT | wx.EXPAND, border=10)
+        size3 = hbox3.GetSize()
+        print(size3)
 
         vbox.Add((-1, 25))
 
@@ -78,6 +89,7 @@ class CompareApp(wx.Frame):
         vbox.Add(hbox5, flag=wx.ALIGN_RIGHT | wx.RIGHT, border=10)
 
         panel.SetSizer(vbox)
+        wx.lib.inspection.InspectionTool().Show()
 
     def OnOpen(self, event):
 
@@ -98,7 +110,8 @@ class CompareApp(wx.Frame):
             for i in range(len(fileList)):
                 self.fileLists[i] = fileList[i][0]
             print(self.fileLists)
-            self.filebox.Set(self.fileLists)
+
+            #self.filebox.Set(self.fileLists)
 
     def getAllFileListByPath(self, pathname):
         try:
@@ -124,6 +137,88 @@ class CompareApp(wx.Frame):
 
     def compareFiles(self):
         print("compare")
+
+
+
+class MyGrid(grid.Grid):
+    def __init__(self, parent):
+        grid.Grid.__init__(self, parent, -1, pos=(10,40), size=(420,95))
+        self.Bind(grid.EVT_GRID_SELECT_CELL,self.onCellSelected)
+        self.Bind(grid.EVT_GRID_CELL_LEFT_CLICK,self.onMouse)
+        self.Bind(grid.EVT_GRID_EDITOR_CREATED, self.onEditorCreated)
+
+    def setAttribute(self, rowNum):
+        self.CreateGrid(rowNum,3)
+        self.RowLabelSize = 0
+        #self.ColLabelSize = 20
+        self.SetColLabelValue(0, ' ')
+        self.SetColLabelValue(1, 'file name')
+        self.SetColLabelValue(2, 'file size')
+
+        self.AutoSizeColumn(0, False)
+        self.SetColSize(0, 24)
+        attr = grid.GridCellAttr()
+        attr.SetEditor(grid.GridCellBoolEditor())
+        attr.SetRenderer(grid.GridCellBoolRenderer())
+        self.SetColAttr(0,attr)
+        attr = grid.GridCellAttr()
+        attr.SetReadOnly(True)
+        self.SetColAttr(1, attr)
+        self.SetColAttr(2, attr)
+        self.SetColSize(1, 1060)
+        self.SetColMinimalWidth(2, 100)
+        attr = grid.GridCellAttr()
+        attr.SetBackgroundColour("pink")
+        self.SetRowAttr(1, attr)
+
+    def onMouse(self,evt):
+        if evt.Col == 0:
+            wx.CallLater(100,self.toggleCheckBox)
+        evt.Skip()
+
+    def toggleCheckBox(self):
+        self.cb.Value = not self.cb.Value
+        self.afterCheckBox(self.cb.Value)
+
+    def onCellSelected(self,evt):
+        if evt.Col == 0:
+            wx.CallAfter(self.EnableCellEditControl)
+        evt.Skip()
+
+    def onEditorCreated(self,evt):
+        if evt.Col == 0:
+            self.cb = evt.Control
+            self.cb.WindowStyle |= wx.WANTS_CHARS
+            self.cb.Bind(wx.EVT_KEY_DOWN,self.onKeyDown)
+            self.cb.Bind(wx.EVT_CHECKBOX,self.onCheckBox)
+        evt.Skip()
+
+    def onKeyDown(self,evt):
+        if evt.KeyCode == wx.WXK_UP:
+            if self.GridCursorRow > 0:
+                self.DisableCellEditControl()
+                self.MoveCursorUp(False)
+        elif evt.KeyCode == wx.WXK_DOWN:
+            if self.GridCursorRow < (self.NumberRows-1):
+                self.DisableCellEditControl()
+                self.MoveCursorDown(False)
+        elif evt.KeyCode == wx.WXK_LEFT:
+            if self.GridCursorCol > 0:
+                self.DisableCellEditControl()
+                self.MoveCursorLeft(False)
+        elif evt.KeyCode == wx.WXK_RIGHT:
+            if self.GridCursorCol < (self.NumberCols-1):
+                self.DisableCellEditControl()
+                self.MoveCursorRight(False)
+        else:
+            evt.Skip()
+
+    def onCheckBox(self,evt):
+        self.afterCheckBox(evt.IsChecked())
+
+    def afterCheckBox(self,isChecked):
+        print('afterCheckBox',self.GridCursorRow,isChecked)
+
 
 if __name__ == '__main__':
     app = wx.App()
