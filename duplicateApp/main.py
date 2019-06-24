@@ -8,7 +8,8 @@ import wx.lib.inspection
 class CompareApp(wx.Frame):
 
     def __init__(self, parent, title):
-        super(CompareApp, self).__init__(parent, title=title, size=(1200, 800))
+        style = wx.DEFAULT_FRAME_STYLE & ~wx.RESIZE_BORDER
+        super(CompareApp, self).__init__(parent, title=title, style=style, size=(1200, 800))
         self.fileLists=[]
 
         self.InitUI()
@@ -49,7 +50,7 @@ class CompareApp(wx.Frame):
 
         hbox3 = wx.BoxSizer(wx.HORIZONTAL)
         self.grid = MyGrid(panel)
-        self.grid.setAttribute(2)
+        #self.grid.setAttribute()
 
         #self.grid.CreateGrid(100, 10);
         #self.grid.SetRowSize(0, 60)
@@ -67,6 +68,11 @@ class CompareApp(wx.Frame):
         hbox4 = wx.BoxSizer(wx.HORIZONTAL)
         btnCompare = wx.Button(panel, label='Compare Files', size=(120, 30))
         #cb1 = wx.CheckBox(panel, label='Compare')
+        self.Bind(
+            event=wx.EVT_BUTTON,
+            handler=self.compareFiles,
+            source=btnCompare,
+        )
         btnCompare.SetFont(font)
         hbox4.Add(btnCompare)
 
@@ -109,8 +115,29 @@ class CompareApp(wx.Frame):
             fileList.sort(key=lambda filename: filename[1], reverse=True)
             for i in range(len(fileList)):
                 self.fileLists[i] = fileList[i][0]
+            print("file list:")
             print(self.fileLists)
-
+            print("file list end")
+            if self.grid.GetNumberRows() > 0:
+                self.grid.DeleteRows(0, self.grid.GetNumberRows(), False)
+            self.grid.AppendRows(len(self.fileLists))
+            for i in range(len(self.fileLists)):
+                fileSize = os.path.getsize(self.fileLists[i])
+                fileStr = str(fileSize) + 'b'
+                if(float(fileSize/1024) >= 1):
+                    fileStrKB = "{:.3f}".format(float(fileSize)/1024)
+                    if(float(fileSize/1024/1024) >= 1):
+                        fileStrMB = "{:.3f}".format(float(fileSize)/1024/1024)
+                        if(float(fileSize/1024/1024/1024) >= 1):
+                            fileStrTB = "{:.3f}".format(float(fileSize)/1024/1024/1024)
+                            fileStr = fileStrTB
+                        else:
+                            fileStr = fileStrMB + 'M'
+                    else:
+                        fileStr = fileStrKB+'K'
+                self.grid.addRow(i, self.fileLists[i], fileStr)
+            self.grid.setAttribute()
+            self.grid.ForceRefresh()
             #self.filebox.Set(self.fileLists)
 
     def getAllFileListByPath(self, pathname):
@@ -135,10 +162,37 @@ class CompareApp(wx.Frame):
         except IOError:
             wx.LogError("Cannot open Directoy '%s'." % pathname)
 
-    def compareFiles(self):
+    def compareFiles(self, event):
         print("compare")
+        self.groupFileListSameSize()
+        for i in range(len(self.groupIndex)):
+            attr = grid.GridCellAttr()
+            attr.SetBackgroundColour("pink")
+            if (i%2 == 0):
+                for row in range(self.groupIndex[i][0], self.groupIndex[i][1]+1):
+                    print(row)
+                    self.grid.SetRowAttr(row, attr)
 
+    def groupFileListSameSize(self):
+        groupNum = 0
+        self.groupIndex=[]
 
+        if (len(self.fileLists)>0):
+            start = 0
+            stop = 1
+            fileSize = os.path.getsize(self.fileLists[0])
+
+            for i in range(len(self.fileLists)-1):
+                stop = i + 1
+                if(fileSize != os.path.getsize(self.fileLists[i+1])):
+                    groupInfo=[start, stop]
+                    fileSize = os.path.getsize(self.fileLists[i+1])
+                    self.groupIndex.append(groupInfo)
+                    start = i+1
+            groupInfo = [start, stop]
+            self.groupIndex.append(groupInfo)
+
+        print(self.groupIndex)
 
 class MyGrid(grid.Grid):
     def __init__(self, parent):
@@ -146,17 +200,19 @@ class MyGrid(grid.Grid):
         self.Bind(grid.EVT_GRID_SELECT_CELL,self.onCellSelected)
         self.Bind(grid.EVT_GRID_CELL_LEFT_CLICK,self.onMouse)
         self.Bind(grid.EVT_GRID_EDITOR_CREATED, self.onEditorCreated)
-
-    def setAttribute(self, rowNum):
-        self.CreateGrid(rowNum,3)
+        self.CreateGrid(0,3)
         self.RowLabelSize = 0
         #self.ColLabelSize = 20
         self.SetColLabelValue(0, ' ')
         self.SetColLabelValue(1, 'file name')
         self.SetColLabelValue(2, 'file size')
-
         self.AutoSizeColumn(0, False)
         self.SetColSize(0, 24)
+        self.SetColSize(1, 1060)
+        self.SetColMinimalWidth(2, 100)
+
+    def setAttribute(self):
+
         attr = grid.GridCellAttr()
         attr.SetEditor(grid.GridCellBoolEditor())
         attr.SetRenderer(grid.GridCellBoolRenderer())
@@ -165,11 +221,15 @@ class MyGrid(grid.Grid):
         attr.SetReadOnly(True)
         self.SetColAttr(1, attr)
         self.SetColAttr(2, attr)
-        self.SetColSize(1, 1060)
-        self.SetColMinimalWidth(2, 100)
+
         attr = grid.GridCellAttr()
-        attr.SetBackgroundColour("pink")
+        #attr.SetBackgroundColour("pink")
         self.SetRowAttr(1, attr)
+
+    def addRow(self, rowIndex, filepath, size):
+        self.SetCellValue(rowIndex, 1, filepath)
+        self.SetCellValue(rowIndex, 2, size)
+
 
     def onMouse(self,evt):
         if evt.Col == 0:
