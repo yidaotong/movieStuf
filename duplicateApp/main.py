@@ -3,6 +3,7 @@ import os
 import tkinter as tk
 import wx.grid as grid
 import wx.lib.inspection
+import filecmp
 
 
 class CompareApp(wx.Frame):
@@ -169,14 +170,15 @@ class CompareApp(wx.Frame):
             attr = grid.GridCellAttr()
             attr.SetBackgroundColour("pink")
             if (i%2 == 0):
-                for row in range(self.groupIndex[i][0], self.groupIndex[i][1]+1):
-                    print(row)
+                print(self.groupIndex[i])
+                for row in range(self.groupIndex[i][0], self.groupIndex[i][1]):
                     self.grid.SetRowAttr(row, attr)
+
+        self.groupFileListCompair()
 
     def groupFileListSameSize(self):
         groupNum = 0
         self.groupIndex=[]
-
         if (len(self.fileLists)>0):
             start = 0
             stop = 1
@@ -189,10 +191,57 @@ class CompareApp(wx.Frame):
                     fileSize = os.path.getsize(self.fileLists[i+1])
                     self.groupIndex.append(groupInfo)
                     start = i+1
-            groupInfo = [start, stop]
+            groupInfo = [start, stop+1]
             self.groupIndex.append(groupInfo)
-
         print(self.groupIndex)
+
+    def groupFileListCompair(self):
+        self.groupCompairIndex=[]
+        for group in self.groupIndex:
+            if(group and len(group)>1):
+                start = group[0]
+                end = group[1]
+                print("compare from "+str(start)+" to "+str(end))
+                self.compairFilesInRange(start, end)
+                print("get contet result")
+                print(self.groupCompairIndex)
+        print("content compair")
+        print(self.groupCompairIndex)
+
+    def compairFilesInRange(self, start, end):
+        if((end-start)==1):
+            indexlist = [start]
+            self.groupCompairIndex.append(indexlist)
+        elif((end-start)==2 and filecmp.cmp(self.fileLists[start], self.fileLists[start+1])):
+            indexlist = [start, (start+1)]
+            self.groupCompairIndex.append(indexlist)
+        else:
+            allList = []
+            loopList = list(range(start, end-1))
+            for i in loopList:
+                indexlist = [i]
+                exist = False
+                for j in range(start+1, end):
+                    for li in allList:
+                        if((start in li) and (j in li)):
+                            exist = True
+                            if(start in loopList):
+                                loopList.remove(start)
+                            if(j in loopList):
+                                loopList.remove(j)
+                    if (exist):
+                        continue
+                    elif(filecmp.cmp(self.fileLists[start], self.fileLists[j])):
+                        indexlist.append(j)
+                allList.append(indexlist)
+            for singleList in allList:
+                self.groupCompairIndex.append(singleList)
+            orgList = list(range(start, end))
+            for sameList in self.groupIndex:
+                for i in sameList:
+                    if i in(orgList):
+                        orgList.remove(i)
+            self.groupCompairIndex.append(orgList)
 
 class MyGrid(grid.Grid):
     def __init__(self, parent):
