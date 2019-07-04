@@ -1,145 +1,263 @@
 import wx
 import os
-import tkinter as tk
+
 import wx.grid as grid
 import wx.lib.inspection
 import filecmp
 
+from ttkwidgets import Table
+from ttkwidgets import CheckboxTreeview
 
-class CompareApp(wx.Frame):
+try:
+    import Tkinter as tk
+    import ttk
+except ImportError:
+    import tkinter as tk
+    from tkinter import ttk
+    from tkinter import filedialog
 
-    def __init__(self, parent, title):
-        style = wx.DEFAULT_FRAME_STYLE & ~wx.RESIZE_BORDER
-        super(CompareApp, self).__init__(parent, title=title, style=style, size=(1200, 800))
-        self.fileLists=[]
 
-        self.InitUI()
-        self.Centre()
-        self.Show()
+class CompareApp():
+
+    def __init__(self, master, title):
+        #super().__init__(master)
+        self.master = master
+        self.fileLists = []
+        self.wholeContainer = tk.Frame(self.master)
+        self.wholeContainer.pack()
+
+        button_width = 3  ### (1)
+        button_padx = "2m"  ### (2)
+        button_pady = "1m"  ### (2)
+        buttons_frame_padx = "3m"  ### (3)
+        buttons_frame_pady = "2m"  ### (3)
+        buttons_frame_ipadx = "3m"  ### (3)
+        buttons_frame_ipady = "1m"  ### (3)
+
+        self.buttons_frame = tk.Frame(self.wholeContainer,height=80,
+                                 width=900)  ###
+        self.buttons_frame.pack(
+            side=tk.TOP,  ###
+            fill=tk.BOTH,
+            expand=tk.YES,
+            ipadx=buttons_frame_ipadx,
+            ipady=buttons_frame_ipady,
+            padx=buttons_frame_padx,
+            pady=buttons_frame_pady,
+        )
+        # top frame
+        self.top_frame = tk.Frame(self.wholeContainer)
+        self.top_frame.pack(side=tk.TOP,
+                            fill=tk.BOTH,
+                            expand=tk.YES,
+                            )  ###
+
+        # bottom frame
+        self.bottom_frame = tk.Frame(self.wholeContainer,
+                                  relief=tk.RIDGE,
+                                  height=50,
+                                  )  ###
+        self.bottom_frame.pack(side=tk.BOTTOM,
+                               fill=tk.BOTH,
+                               expand=tk.YES,
+                               )  ###
+
+        self.middle_frame = tk.Frame(self.top_frame, background="white",
+                                borderwidth=5, relief=tk.RIDGE,
+                                height=580,
+                                width=980,
+                                )  ###
+        self.middle_frame.pack(side=tk.LEFT,
+                              fill=tk.BOTH,
+                              expand=tk.YES,
+                              )  ###
+
+
+        # now we add the buttons to the buttons_frame
+        self.button1 = tk.Button(self.buttons_frame, command=self.OnOpen)
+        self.button1.configure(text="Open")
+        self.button1.focus_force()
+        self.button1.configure(
+            width=button_width,  ### (1)
+            padx=button_padx,  ### (2)
+            pady=button_pady  ### (2)
+        )
+        self.button1.pack(side=tk.LEFT)
+        #tk.ttk.Style().configure("TLabel", padding=(0, 5, 0, 5),
+         #                 font='serif 10')
+        #self.master.columnconfigure(0, pad=60)
+        #self.master.columnconfigure(1, pad=60)
+        #self.master.grid_rowconfigure(0, minsize=400, weight=10)
+        #self.master.grid_columnconfigure(0, minsize=400, weight=10)
+        #self.scrollbar = tk.Scrollbar(self.middle_frame)
+        #self.scrollbar.pack(side=tk.RIGHT, fill=tk.BOTH)
+        self.left_frame = tk.Frame(self.middle_frame, background="white",
+                                borderwidth=0, relief=tk.RIDGE,
+                                height=580,
+                                width=2,
+                                )  ###
+        self.left_frame.pack(side=tk.LEFT,
+                             fill=tk.BOTH,
+                             expand=tk.YES,
+                             )  ###
+
+        ### right_frame
+        self.right_frame = tk.Frame(self.middle_frame, background="white",
+                                 borderwidth=0, relief=tk.RIDGE,
+                                    height=580,
+                                 width=900,
+                                 )
+        self.right_frame.pack(side=tk.RIGHT,
+                              fill=tk.BOTH,
+                              expand=tk.YES,
+                              )  ###
+
+        isAllSelected=False
+        self.AllCheckButton = ttk.Checkbutton(self.left_frame, text="All", variable=isAllSelected)
+        self.AllCheckButton.pack()
+
+        columns = ["File List", "Size"]
+        table = Table(self.right_frame, columns=columns, height=6)
+        for col in columns:
+            table.heading(col, text=col)
+
+        table.column(columns[0], width=200, stretch=False)
+        table.column(columns[1], width=20, stretch=False)
+        sy = tk.Scrollbar(self.middle_frame, orient='vertical', command=table.yview)
+        table.configure(yscrollcommand=sy.set)
+        table.pack()
+
+
+        #t = CheckboxTreeview(self.left_frame, show="tree", padding=1)
+        #t.pack()
+        #t.insert("", 0, "1", text="All")
+
+        #self.checkAll = tk.Checkbutton(self.left_frame, text="All", width=2)
+        #self.checkAll.pack(side=tk.LEFT)
+        #self.checkAll.grid(row=0, column=0)
+
+        #self.lbFile = tk.Label(self.middle_frame, relief=tk.RIDGE, width=60)
+        #self.lbFile["text"] = "File List"
+        #self.lbFile.pack(side=tk.LEFT)
+        #self.lbFile.grid(row=0, column=1)
+
+        #self.lbSize = tk.Label(self.middle_frame, relief=tk.RIDGE, width=10)
+        #self.lbSize["text"] = "Size"
+        #self.lbSize.pack(side=tk.LEFT)
+        #self.mylist = tk.Listbox(self.middle_frame, yscrollcommand=self.scrollbar.set)
+        #for line in range(100):
+        #    self.mylist.insert(tk.END, 'This is line number' + str(line))
+        #self.mylist.pack(side=tk.LEFT, fill=tk.BOTH)
+        #self.scrollbar.config(command=self.mylist.yview)
+        #self.lbSize.grid(row=0, column=2)
+
+
+        #self.button1.bind("<Return>", self.OnOpen)
+
+        self.btnCompare = tk.Button(self.bottom_frame, command=self.compareFiles)
+        self.btnCompare.configure(text="Compare Files")
+        self.btnCompare.pack(side=tk.LEFT)
+        self.btnCompare.bind("<Return>", self.compareFiles)
+
+        self.btnDel = tk.Button(self.bottom_frame)
+        self.btnDel.configure(text="Deleted Selected")
+        self.btnDel.pack(side=tk.LEFT)
+        #self.btnDel.bind("<Return>", self.compareFiles)
+        #self.btnCompare.grid(row=2, column=0, columnspan=20)
+        #self.pack(fill=tk.BOTH, expand=1)
+        #self.create_widgets()
+        #self.InitUI()
+        #self.Centre()
+        #self.Show()
 
     def InitUI(self):
-        panel = wx.Panel(self)
+        self.openButton = Button(self)
+        self.openButton["text"] = "Select Folder"
+        self.openButton["command"] = self.OnOpen
+        self.openButton.place(x=20, y=20)
 
-        font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
-        font.SetPointSize(9)
+        self.frame = tk.Frame(self)
+        self.frame.pack()
+        #self.pack()
+        self.lbFile = tk.Label(self.frame)
+        self.lbFile["text"] = "File List"
+        #self.lbFile.grid(row=1, column=0, columnspan=20)
 
-        vbox = wx.BoxSizer(wx.VERTICAL)
+        self.lbSize = tk.Label(self.frame)
+        self.lbSize["text"] = "Size"
+        #self.lbSize.grid(row=1, column=1, columnspan=20)
 
-        hbox1 = wx.BoxSizer(wx.HORIZONTAL)
-        btnOpen = wx.Button(panel, label='Select Folder', size=(120, 30))
-        #st1 = wx.StaticText(panel, label='Class Name')
-        btnOpen.SetFont(font)
-        self.Bind(
-            event=wx.EVT_BUTTON,
-            handler=self.OnOpen,
-            source=btnOpen,
-        )
-        hbox1.Add(btnOpen, flag=wx.RIGHT, border=8)
-        tc = wx.TextCtrl(panel)
-        hbox1.Add(tc, proportion=1)
-        vbox.Add(hbox1, flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, border=10)
 
-        vbox.Add((-1, 10))
+        self.btnCompare = tk.Button(self)
+        self.btnCompare["text"] = "Compare Files"
+        self.btnCompare["command"] = self.btnCompare
+        self.btnCompare.grid(row=2, column=0, columnspan=20)
 
-        hbox2 = wx.BoxSizer(wx.HORIZONTAL)
-        st2 = wx.StaticText(panel, label='File List')
-        st2.SetFont(font)
-        hbox2.Add(st2)
-        vbox.Add(hbox2, flag=wx.LEFT | wx.TOP, border=10)
+        self.btnDel = tk.Button(self)
+        self.btnDel["text"] = "Deleted Selected"
+        #self.btnDel["command"] = self.btnCompare
+        self.btnDel.grid(row=2, column=1, columnspan=20)
 
-        vbox.Add((-1, 10))
+        self.btnOk = tk.Button(self)
+        self.btnOk["text"] = "Ok"
+        #self.btnOk["command"] = self.btnCompare
+        self.btnOk.grid(row=2, column=2, columnspan=2)
 
-        hbox3 = wx.BoxSizer(wx.HORIZONTAL)
-        self.grid = MyGrid(panel)
-        #self.grid.setAttribute()
+        self.btnClose = tk.Button(self)
+        self.btnClose["text"] = "Close"
+        #self.btnOk["command"] = self.btnCompare
+        self.btnClose.grid(row=2, column=3, columnspan=2)
 
-        #self.grid.CreateGrid(100, 10);
-        #self.grid.SetRowSize(0, 60)
-        #self.grid.SetColSize(0, 120)
-        #self.filebox = wx.CheckListBox(panel, choices=self.fileLists, style=wx.LB_MULTIPLE, name="listBox")
-        #tc2 = wx.TextCtrl(panel, style=wx.TE_MULTILINE)
-        hbox3.Add(self.grid, proportion=1, flag=wx.EXPAND|wx.ALL)
-        hbox3.Fit(panel)
-        vbox.Add(hbox3, proportion=1, flag=wx.EXPAND | wx.RIGHT | wx.EXPAND, border=10)
-        size3 = hbox3.GetSize()
-        print(size3)
 
-        vbox.Add((-1, 25))
-
-        hbox4 = wx.BoxSizer(wx.HORIZONTAL)
-        btnCompare = wx.Button(panel, label='Compare Files', size=(120, 30))
-        #cb1 = wx.CheckBox(panel, label='Compare')
-        self.Bind(
-            event=wx.EVT_BUTTON,
-            handler=self.compareFiles,
-            source=btnCompare,
-        )
-        btnCompare.SetFont(font)
-        hbox4.Add(btnCompare)
-
-        btnDel = wx.Button(panel, label='Deleted Selected', size=(120, 30))
-        #cb2 = wx.CheckBox(panel, label='Deleted Selected')
-        btnDel.SetFont(font)
-        hbox4.Add(btnDel, flag=wx.LEFT, border=10)
-        #cb3 = wx.CheckBox(panel, label='Non-Project classes')
-        #cb3.SetFont(font)
-        #hbox4.Add(cb3, flag=wx.LEFT, border=10)
-        vbox.Add(hbox4, flag=wx.LEFT, border=10)
-
-        vbox.Add((-1, 25))
-
-        hbox5 = wx.BoxSizer(wx.HORIZONTAL)
-        btn1 = wx.Button(panel, label='Ok', size=(70, 30))
-        hbox5.Add(btn1)
-        btn2 = wx.Button(panel, label='Close', size=(70, 30))
-        hbox5.Add(btn2, flag=wx.LEFT | wx.BOTTOM, border=5)
-        vbox.Add(hbox5, flag=wx.ALIGN_RIGHT | wx.RIGHT, border=10)
-
-        panel.SetSizer(vbox)
-        wx.lib.inspection.InspectionTool().Show()
-
-    def OnOpen(self, event):
+    def OnOpen(self):
 
         # otherwise ask the user what new file to open
-        with wx.DirDialog(self, "Select Folder", style=1) as dialog:
+        pathname = filedialog.askdirectory()
+        print(pathname)
 
-            if dialog.ShowModal() == wx.ID_OK:
-                # Proceed loading the folder chosen by the user
-                pathname = dialog.GetPath()
-                print(pathname)
-            else:
-                return
-            self.getAllFileListByPath(pathname)
-            fileList = [0 for i in range(len(self.fileLists))]
-            for i in range(len(self.fileLists)):
-                fileList[i]=(self.fileLists[i], os.path.getsize(self.fileLists[i]))
-            fileList.sort(key=lambda filename: filename[1], reverse=True)
-            for i in range(len(fileList)):
-                self.fileLists[i] = fileList[i][0]
-            print("file list:")
-            print(self.fileLists)
-            print("file list end")
-            if self.grid.GetNumberRows() > 0:
-                self.grid.DeleteRows(0, self.grid.GetNumberRows(), False)
-            self.grid.AppendRows(len(self.fileLists))
-            for i in range(len(self.fileLists)):
-                fileSize = os.path.getsize(self.fileLists[i])
-                fileStr = str(fileSize) + 'b'
-                if(float(fileSize/1024) >= 1):
-                    fileStrKB = "{:.3f}".format(float(fileSize)/1024)
-                    if(float(fileSize/1024/1024) >= 1):
-                        fileStrMB = "{:.3f}".format(float(fileSize)/1024/1024)
-                        if(float(fileSize/1024/1024/1024) >= 1):
-                            fileStrTB = "{:.3f}".format(float(fileSize)/1024/1024/1024)
-                            fileStr = fileStrTB
-                        else:
-                            fileStr = fileStrMB + 'M'
+        self.getAllFileListByPath(pathname)
+        fileList = [0 for i in range(len(self.fileLists))]
+        for i in range(len(self.fileLists)):
+            fileList[i]=(self.fileLists[i], os.path.getsize(self.fileLists[i]))
+        fileList.sort(key=lambda filename: filename[1], reverse=True)
+        for i in range(len(fileList)):
+            self.fileLists[i] = fileList[i][0]
+        print("file list:")
+        print(self.fileLists)
+        print("file list end")
+        #if self.grid.GetNumberRows() > 0:
+        #    self.grid.DeleteRows(0, self.grid.GetNumberRows(), False)
+        #self.grid.AppendRows(len(self.fileLists))
+        for i in range(len(self.fileLists)):
+            fileSize = os.path.getsize(self.fileLists[i])
+            fileStr = str(fileSize) + 'b'
+            if(float(fileSize/1024) >= 1):
+                fileStrKB = "{:.3f}".format(float(fileSize)/1024)
+                if(float(fileSize/1024/1024) >= 1):
+                    fileStrMB = "{:.3f}".format(float(fileSize)/1024/1024)
+                    if(float(fileSize/1024/1024/1024) >= 1):
+                        fileStrTB = "{:.3f}".format(float(fileSize)/1024/1024/1024)
+                        fileStr = fileStrTB
                     else:
-                        fileStr = fileStrKB+'K'
-                self.grid.addRow(i, self.fileLists[i], fileStr)
-            self.grid.setAttribute()
-            self.grid.ForceRefresh()
-            #self.filebox.Set(self.fileLists)
+                        fileStr = fileStrMB + 'M'
+                else:
+                    fileStr = fileStrKB+'K'
+            self.addFileRow(i+1, self.fileLists[i], fileStr)
+        #self.grid.setAttribute()
+        #self.grid.ForceRefresh()
+        #self.filebox.Set(self.fileLists)
+
+    def addFileRow(self, rowNum, fileName, fileSize, isCheck=False):
+        self.checkAll = tk.Checkbutton(self.middle_frame, width=2)
+        self.checkAll.grid(row=rowNum, column=0)
+
+        self.lbFile = tk.Label(self.middle_frame, relief=tk.RIDGE, width=60)
+        self.lbFile["text"] = fileName
+        self.lbFile.grid(row=rowNum, column=1)
+
+        self.lbSize = tk.Label(self.middle_frame, relief=tk.RIDGE, width=10)
+        self.lbSize["text"] = fileSize
+        self.lbSize.grid(row=rowNum, column=2)
 
     def getAllFileListByPath(self, pathname):
         try:
@@ -166,15 +284,36 @@ class CompareApp(wx.Frame):
     def compareFiles(self, event):
         print("compare")
         self.groupFileListSameSize()
-        for i in range(len(self.groupIndex)):
+        self.groupFileListCompair()
+        for i in range(len(self.groupCompairIndex)):
             attr = grid.GridCellAttr()
             attr.SetBackgroundColour("pink")
+            if(len(self.groupCompairIndex[i]) > 1):
+                for row in self.groupCompairIndex[i]:
+                    #evt = self.grid.GridEvent()
+                    #evt.col = 0
+                    #evt.row = row
+                    attr = self.grid.GetOrCreateCellAttr(row, 0)
+                    celleditor = attr.GetEditor(self.grid, row, 0)
+                    render = attr.GetRenderer(self.grid, row, 0)
+                    #render.Draw(self.grid, attr,)
+                    #attr.SetRenderer(render)
+                    print(attr)
+                    #evt = grid.GridEditorCreatedEvent(self.grid.GetId(), 10270, self.grid, row=row)
+                    #evt.SetCol(0)
+                    #evt.SetRow(row)
+                    #msg = grid.GridTableMessage(self, grid.GRIDTABLE_NOTIFY_ROWS_INSERTED, row, 1)
+                    #self.GetView().ProcessTableMessage(msg)
+                    #evt = grid.GridEvent(self.grid.GetId(), 10250, self.grid, row=row, col=0)
+                    #wx.PostEvent(evt)
+                    #evt = wx.CommandEvent(wx.EVT_CHECKBOX.typeId, self.grid.GetId())
+                    #self.grid.onMouse(evt)
+                    #wx.PostEvent(self.GetEventHandler(), evt)
             if (i%2 == 0):
-                print(self.groupIndex[i])
-                for row in range(self.groupIndex[i][0], self.groupIndex[i][1]):
+                print(self.groupCompairIndex[i])
+                for row in range(self.groupCompairIndex[i][0], self.groupCompairIndex[i][1]):
                     self.grid.SetRowAttr(row, attr)
-
-        self.groupFileListCompair()
+        self.grid.ForceRefresh()
 
     def groupFileListSameSize(self):
         groupNum = 0
@@ -210,7 +349,7 @@ class CompareApp(wx.Frame):
 
     def compairFilesInRange(self, start, end):
         if((end-start)==1):
-            indexlist = [start]
+            indexlist = [start, start+1]
             self.groupCompairIndex.append(indexlist)
         elif((end-start)==2 and filecmp.cmp(self.fileLists[start], self.fileLists[start+1])):
             indexlist = [start, (start+1)]
@@ -221,6 +360,7 @@ class CompareApp(wx.Frame):
             for i in loopList:
                 indexlist = [i]
                 exist = False
+                found = False
                 for j in range(start+1, end):
                     for li in allList:
                         if((start in li) and (j in li)):
@@ -233,15 +373,24 @@ class CompareApp(wx.Frame):
                         continue
                     elif(filecmp.cmp(self.fileLists[start], self.fileLists[j])):
                         indexlist.append(j)
-                allList.append(indexlist)
+                for li in allList:
+                    for i in indexlist:
+                        if(i in li):
+                            found = True;
+                            break
+                    if(found):
+                        break
+                if(not found):
+                    allList.append(indexlist)
             for singleList in allList:
                 self.groupCompairIndex.append(singleList)
             orgList = list(range(start, end))
-            for sameList in self.groupIndex:
+            for sameList in self.groupCompairIndex:
                 for i in sameList:
                     if i in(orgList):
                         orgList.remove(i)
-            self.groupCompairIndex.append(orgList)
+            for i in orgList:
+                self.groupCompairIndex.append([i,i+1])
 
 class MyGrid(grid.Grid):
     def __init__(self, parent):
@@ -281,11 +430,14 @@ class MyGrid(grid.Grid):
 
 
     def onMouse(self,evt):
+        print("mouse event")
+        print(evt)
         if evt.Col == 0:
-            wx.CallLater(100,self.toggleCheckBox)
+            wx.CallLater(100, self.toggleCheckBox)
         evt.Skip()
 
     def toggleCheckBox(self):
+        print("cb value:"+str(self.cb.Value))
         self.cb.Value = not self.cb.Value
         self.afterCheckBox(self.cb.Value)
 
@@ -330,6 +482,7 @@ class MyGrid(grid.Grid):
 
 
 if __name__ == '__main__':
-    app = wx.App()
-    CompareApp(None, title='Search the duplicated files')
-    app.MainLoop()
+    root = tk.Tk()
+    root.geometry('1000x600')
+    app = CompareApp(root, "test")
+    root.mainloop()
