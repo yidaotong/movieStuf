@@ -35,45 +35,17 @@ class CompareApp():
         buttons_frame_ipady = "1m"  ### (3)
 
         self.buttons_frame = tk.Frame(self.wholeContainer,height=80,
-                                 width=900)  ###
+                                 width=980)  ###
         self.buttons_frame.pack(
             side=tk.TOP,  ###
             fill=tk.BOTH,
             expand=tk.YES,
+            anchor="w",
             ipadx=buttons_frame_ipadx,
             ipady=buttons_frame_ipady,
             padx=buttons_frame_padx,
             pady=buttons_frame_pady,
         )
-        # top frame
-        self.top_frame = tk.Frame(self.wholeContainer)
-        self.top_frame.pack(side=tk.TOP,
-                            fill=tk.BOTH,
-                            expand=tk.YES,
-                            )  ###
-
-        # bottom frame
-        self.bottom_frame = tk.Frame(self.wholeContainer,
-                                  relief=tk.RIDGE,
-                                  height=50,
-                                  )  ###
-        self.bottom_frame.pack(side=tk.BOTTOM,
-                               fill=tk.BOTH,
-                               expand=tk.YES,
-                               )  ###
-
-        self.middle_frame = tk.Frame(self.top_frame, background="white",
-                                borderwidth=5, relief=tk.RIDGE,
-                                height=580,
-                                width=980,
-                                )  ###
-        self.middle_frame.pack(side=tk.LEFT,
-                              fill=tk.BOTH,
-                              expand=tk.YES,
-                              )  ###
-
-
-        # now we add the buttons to the buttons_frame
         self.button1 = tk.Button(self.buttons_frame, command=self.OnOpen)
         self.button1.configure(text="Open")
         self.button1.focus_force()
@@ -83,49 +55,97 @@ class CompareApp():
             pady=button_pady  ### (2)
         )
         self.button1.pack(side=tk.LEFT)
-        #tk.ttk.Style().configure("TLabel", padding=(0, 5, 0, 5),
-         #                 font='serif 10')
-        #self.master.columnconfigure(0, pad=60)
-        #self.master.columnconfigure(1, pad=60)
-        #self.master.grid_rowconfigure(0, minsize=400, weight=10)
-        #self.master.grid_columnconfigure(0, minsize=400, weight=10)
-        #self.scrollbar = tk.Scrollbar(self.middle_frame)
-        #self.scrollbar.pack(side=tk.RIGHT, fill=tk.BOTH)
-        self.left_frame = tk.Frame(self.middle_frame, background="white",
-                                borderwidth=0, relief=tk.RIDGE,
-                                height=580,
-                                width=2,
-                                )  ###
-        self.left_frame.pack(side=tk.LEFT,
-                             fill=tk.BOTH,
-                             expand=tk.YES,
-                             )  ###
+        # top frame
+        self.top_frame = tk.Frame(self.wholeContainer, relief=tk.RIDGE,
+                                  height=50,
+                                  width=980,)
+        self.top_frame.pack(side=tk.TOP,
+                            fill=tk.BOTH,
+                            expand=tk.YES,
+                            anchor="w",
+                            )  ###
 
-        ### right_frame
-        self.right_frame = tk.Frame(self.middle_frame, background="white",
-                                 borderwidth=0, relief=tk.RIDGE,
-                                    height=580,
-                                 width=900,
-                                 )
-        self.right_frame.pack(side=tk.RIGHT,
+
+
+        self.middle_frame = tk.Frame(self.top_frame, background="white",
+                                borderwidth=5, relief=tk.RIDGE,
+                                height=500,
+                                width=980,
+                                )  ###
+        self.middle_frame.pack(side=tk.LEFT,
                               fill=tk.BOTH,
                               expand=tk.YES,
                               )  ###
 
-        isAllSelected=False
-        self.AllCheckButton = ttk.Checkbutton(self.left_frame, text="All", variable=isAllSelected)
-        self.AllCheckButton.pack()
+        self.checkwithfile = CheckboxTreeview(self.middle_frame )
+        self.checkwithfile.pack()
 
-        columns = ["File List", "Size"]
-        table = Table(self.right_frame, columns=columns, height=6)
-        for col in columns:
-            table.heading(col, text=col)
 
-        table.column(columns[0], width=200, stretch=False)
-        table.column(columns[1], width=20, stretch=False)
-        sy = tk.Scrollbar(self.middle_frame, orient='vertical', command=table.yview)
-        table.configure(yscrollcommand=sy.set)
-        table.pack()
+        # now we add the buttons to the buttons_frame
+
+
+#        self.left_frame = tk.Frame(self.middle_frame, background="white",
+#                                borderwidth=0, relief=tk.RIDGE,
+#                                height=500,
+#                                width=2,
+#                                )  ###
+#        self.left_frame.pack(side=tk.LEFT,
+#                             fill=tk.BOTH,
+#                             expand=tk.YES,
+#                             )  ###
+
+        ### right_frame
+#        self.right_frame = tk.Frame(self.middle_frame, background="white",
+#                                 borderwidth=0, relief=tk.RIDGE,
+#                                    height=500,
+#                                 width=900,
+ #                                )
+ #       self.right_frame.pack(side=tk.RIGHT,
+ #                             fill=tk.BOTH,
+ #                             expand=tk.YES,
+ #                             )  ###
+
+ #       isAllSelected=False
+
+ #       self.AllCheckButton = ttk.Checkbutton(self.middle_frame, text="All", variable=isAllSelected)
+ #       self.AllCheckButton.grid(sticky=tk.W)
+ #       self.checkMap={}
+
+ #       columns = ["File List", "Size"]
+ #       self.table = Table(self.right_frame, columns=columns, height=20)
+ #       for col in columns:
+ #           self.table.heading(col, text=col)
+
+#        self.table.column(columns[0], width=800, stretch=True)
+#        self.table.column(columns[1], width=80, stretch=True)
+#        sx = tk.Scrollbar(self.middle_frame, orient='horizontal', command=self.table.xview)
+ #       sy = tk.Scrollbar(self.middle_frame, orient='vertical', command=self.table.yview)
+ #       self.table.configure(yscrollcommand=sy.set, xscrollcommand=sx.set)
+        #self.table.pack()
+ #       self.table.grid(sticky='ewns')
+ #       self.master.update_idletasks()
+
+
+        # bottom frame
+        self.bottom_frame = tk.Frame(self.wholeContainer,
+                                  relief=tk.RIDGE,
+                                  height=50,
+                                  width=980,
+                                  )  ###
+        self.bottom_frame.pack(side=tk.BOTTOM,
+                               fill=tk.BOTH,
+                               expand=tk.YES,
+                               anchor="w",
+                               )  ###
+
+        self.btnCompare = tk.Button(self.bottom_frame, command=self.compareFiles)
+        self.btnCompare.configure(text="Compare Files")
+        self.btnCompare.pack(side=tk.LEFT)
+        self.btnCompare.bind("<Return>", self.compareFiles)
+
+        self.btnDel = tk.Button(self.bottom_frame)
+        self.btnDel.configure(text="Deleted Selected")
+        self.btnDel.pack(side=tk.LEFT)
 
 
         #t = CheckboxTreeview(self.left_frame, show="tree", padding=1)
@@ -154,14 +174,6 @@ class CompareApp():
 
         #self.button1.bind("<Return>", self.OnOpen)
 
-        self.btnCompare = tk.Button(self.bottom_frame, command=self.compareFiles)
-        self.btnCompare.configure(text="Compare Files")
-        self.btnCompare.pack(side=tk.LEFT)
-        self.btnCompare.bind("<Return>", self.compareFiles)
-
-        self.btnDel = tk.Button(self.bottom_frame)
-        self.btnDel.configure(text="Deleted Selected")
-        self.btnDel.pack(side=tk.LEFT)
         #self.btnDel.bind("<Return>", self.compareFiles)
         #self.btnCompare.grid(row=2, column=0, columnspan=20)
         #self.pack(fill=tk.BOTH, expand=1)
@@ -225,39 +237,31 @@ class CompareApp():
         print("file list:")
         print(self.fileLists)
         print("file list end")
-        #if self.grid.GetNumberRows() > 0:
-        #    self.grid.DeleteRows(0, self.grid.GetNumberRows(), False)
-        #self.grid.AppendRows(len(self.fileLists))
-        for i in range(len(self.fileLists)):
-            fileSize = os.path.getsize(self.fileLists[i])
-            fileStr = str(fileSize) + 'b'
-            if(float(fileSize/1024) >= 1):
-                fileStrKB = "{:.3f}".format(float(fileSize)/1024)
-                if(float(fileSize/1024/1024) >= 1):
-                    fileStrMB = "{:.3f}".format(float(fileSize)/1024/1024)
-                    if(float(fileSize/1024/1024/1024) >= 1):
-                        fileStrTB = "{:.3f}".format(float(fileSize)/1024/1024/1024)
-                        fileStr = fileStrTB
-                    else:
-                        fileStr = fileStrMB + 'M'
+        self.groupFileListSameSize()
+        index=0
+        fileSize=0
+        for fileList in self.groupIndex:
+            for i in range(len(fileList)):
+                print(fileList[i])
+                fileSize = os.path.getsize(fileList[i])
+                rootIndex = "index_"+str(index)
+                childIndex = "s_"+str(fileSize)+str(i)
+                if i == 0:
+                    self.checkwithfile.insert('', "end", rootIndex, text=str(fileSize))
                 else:
-                    fileStr = fileStrKB+'K'
-            self.addFileRow(i+1, self.fileLists[i], fileStr)
-        #self.grid.setAttribute()
-        #self.grid.ForceRefresh()
-        #self.filebox.Set(self.fileLists)
+                    self.checkwithfile.insert(rootIndex, "end", childIndex, text=fileList[i])
+            index = index+1
+
+
+        #if self.grid.GetNumberRows() > 0:
+
 
     def addFileRow(self, rowNum, fileName, fileSize, isCheck=False):
-        self.checkAll = tk.Checkbutton(self.middle_frame, width=2)
-        self.checkAll.grid(row=rowNum, column=0)
-
-        self.lbFile = tk.Label(self.middle_frame, relief=tk.RIDGE, width=60)
-        self.lbFile["text"] = fileName
-        self.lbFile.grid(row=rowNum, column=1)
-
-        self.lbSize = tk.Label(self.middle_frame, relief=tk.RIDGE, width=10)
-        self.lbSize["text"] = fileSize
-        self.lbSize.grid(row=rowNum, column=2)
+        #self.checkButton = ttk.Checkbutton(self.left_frame)
+        #elf.checkButton.grid(sticky=tk.W)
+        #self.checkMap[rowNum] = self.checkButton
+        #self.tree.insert('', 'end')
+        self.table.insert('', 'end', iid=rowNum, values=(fileName, fileSize))
 
     def getAllFileListByPath(self, pathname):
         try:
@@ -281,7 +285,7 @@ class CompareApp():
         except IOError:
             wx.LogError("Cannot open Directoy '%s'." % pathname)
 
-    def compareFiles(self, event):
+    def compareFiles(self):
         print("compare")
         self.groupFileListSameSize()
         self.groupFileListCompair()
