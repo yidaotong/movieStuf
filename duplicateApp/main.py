@@ -88,9 +88,10 @@ class CompareApp():
         self.btnCompare.pack(side=tk.LEFT)
         self.btnCompare.bind("<Return>", self.compareFiles)
 
-        self.btnDel = tk.Button(self.buttons_frame)
+        self.btnDel = tk.Button(self.buttons_frame, command=self.deleteSelectedFiles)
         self.btnDel.configure(text="Deleted Selected")
         self.btnDel.pack(side=tk.LEFT)
+        self.btnCompare.bind("<Return>", self.deleteSelectedFiles)
 
 
     def OnOpen(self):
@@ -98,7 +99,13 @@ class CompareApp():
         # otherwise ask the user what new file to open
         pathname = filedialog.askdirectory()
         print(pathname)
-
+        if os.path.exists(pathname):
+            for i in self.checkwithfile.get_children():
+                self.checkwithfile.delete(i)
+            self.fileLists = []
+            self.groupFiles = {}
+        else:
+            return
         self.getAllFileListByPath(pathname)
         fileList = [0 for i in range(len(self.fileLists))]
         for i in range(len(self.fileLists)):
@@ -110,6 +117,8 @@ class CompareApp():
         print(self.fileLists)
         print("file list end")
         self.groupFileListSameSize()
+        print("groupFiles:")
+        print(self.groupFiles)
         index=0
         for fileSize, fileList in self.groupFiles.items():
             rootIndex = "r_" + str(index)
@@ -129,6 +138,8 @@ class CompareApp():
             fileNum = len(fileList)
             self.checkwithfile.insert('', "end", rootIndex, text=sizeCal+'('+str(fileNum)+')')
 
+            self.checkwithfile.tag_configure("evenrow", background='white', foreground='black')
+            self.checkwithfile.tag_configure("oddrow", background='black', foreground='white')
             for i in range(len(fileList)):
                 childIndex = "c_"+str(fileSize)+'_i_'+str(i)
                 textC = fileList[i]
@@ -162,77 +173,86 @@ class CompareApp():
     def compareFiles(self):
         print("compare")
 
-        for rootItem in self.checkwithfile.get_children():
-            print(rootItem)
-            #text = self.checkwithfile.tag_has('text', rootItem)
-            #print(text)
-            self.checkwithfile.change_state(rootItem, "checked")
-            indexFileGroup={}
-            for child in self.checkwithfile.get_children(rootItem):
-                print(child)
-                if self.checkwithfile.tag_has('text', child):
-                    fileName = self.checkwithfile.item(child).text
-                    print(text)
-                    indexFileGroup[child]=fileName
-                else:
-                    print("no text find for:"+child)
-            self.compareSameSizeFiles(indexFileGroup)
-
+        for i in self.checkwithfile.get_children():
+            self.checkwithfile.delete(i)
+        rootIn = 0
         for fileSize, fileList in self.groupFiles.items():
-            attr = grid.GridCellAttr()
-            attr.SetBackgroundColour("pink")
-            if(len(self.groupCompairIndex[i]) > 1):
-                for row in self.groupCompairIndex[i]:
-                    #evt = self.grid.GridEvent()
-                    #evt.col = 0
-                    #evt.row = row
-                    attr = self.grid.GetOrCreateCellAttr(row, 0)
-                    celleditor = attr.GetEditor(self.grid, row, 0)
-                    render = attr.GetRenderer(self.grid, row, 0)
-                    #render.Draw(self.grid, attr,)
-                    #attr.SetRenderer(render)
-                    print(attr)
-                    #evt = grid.GridEditorCreatedEvent(self.grid.GetId(), 10270, self.grid, row=row)
-                    #evt.SetCol(0)
-                    #evt.SetRow(row)
-                    #msg = grid.GridTableMessage(self, grid.GRIDTABLE_NOTIFY_ROWS_INSERTED, row, 1)
-                    #self.GetView().ProcessTableMessage(msg)
-                    #evt = grid.GridEvent(self.grid.GetId(), 10250, self.grid, row=row, col=0)
-                    #wx.PostEvent(evt)
-                    #evt = wx.CommandEvent(wx.EVT_CHECKBOX.typeId, self.grid.GetId())
-                    #self.grid.onMouse(evt)
-                    #wx.PostEvent(self.GetEventHandler(), evt)
-            if (i%2 == 0):
-                print(self.groupCompairIndex[i])
-                for row in range(self.groupCompairIndex[i][0], self.groupCompairIndex[i][1]):
-                    self.grid.SetRowAttr(row, attr)
-        self.grid.ForceRefresh()
+            rootIndex = "r_" + str(rootIn)
+            sizeCal = str(fileSize)+'b'
+            if fileSize > 1024:
 
-    def compareSameSizeFiles(self, indeFileGroup):
+                if fileSize > 1024*1024:
+                    if fileSize >1024*1024*1024:
+                        if fileSize >1024*1024*1024*1024:
+                            sizeCal = "{:.3f}".format(float(fileSize) / (1024*1024*1024*1024)) + 'T'
+                        else:
+                            sizeCal = "{:.3f}".format(float(fileSize) / (1024*1024*1024)) + 'G'
+                    else:
+                        sizeCal = "{:.3f}".format(float(fileSize) / (1024*1024)) + 'M'
+                else:
+                    sizeCal = "{:.3f}".format(float(fileSize) / 1024) + 'k'
+            fileNum = len(fileList)
+            self.checkwithfile.insert('', "end", rootIndex, text=sizeCal+'('+str(fileNum)+')')
+
+
+            indexFileGroup = {}
+            groupedSameList = self.compareSameSizeFiles(fileList)
+
+            childIn = 0
+            for groupIndex in range(len(groupedSameList)):
+                #indexFileGroup[child] = fileList[groupIndex]
+
+
+                textC = fileList[groupIndex]
+                print("textC:"+textC)
+                self.checkwithfile.tag_configure("evenrow", background='white', foreground='black')
+                self.checkwithfile.tag_configure("oddrow", background='black', foreground='white')
+                for i in range(len(groupedSameList[groupIndex])):
+                    childIndex = "c_" + str(fileSize) + '_i_' + str(childIn)
+                    if groupIndex % 2 == 0:
+                        self.checkwithfile.insert(rootIndex, "end", childIndex, text=fileList[i], tags=('evenrow',))
+                    else:
+                        self.checkwithfile.insert(rootIndex, "end", childIndex, text=fileList[i], tags=('oddrow',))
+                    if i > 0:
+                        self.checkwithfile.change_state(childIndex, 'checked')
+
+
+                    childIn = childIn + 1
+
+            rootIn = rootIn+1
+
+
+    def compareSameSizeFiles(self, fileList):
         groupComparedFiles=[]
         groupMap = []
         compareIndex = ""
         groupComparedFiles.append(groupMap)
-        for index, fileName in indeFileGroup.items():
-            if len(groupComparedFiles) == 1 and len(groupComparedFiles[0]==0):
-                groupComparedFiles[0].append(index)
-                compareIndex = index
-                continue
-            (groupIndex, fileIndex) = self.getIndexInGroup(groupComparedFiles, index)
-            if groupIndex == -1:
-                if filecmp.cmp(indeFileGroup[compareIndex], index):
-                    (groupIndex, fileIndex) = self.getIndexInGroup(groupComparedFiles, compareIndex)
-                    groupComparedFiles[groupIndex].append(index)
-                else:
-                    groupMap.append(index)
-                    groupComparedFiles.append(groupMap)
+        for index in range(len(fileList)):
+            fileName = fileList[index]
             groupMap = []
-        print(groupComparedFiles)
+            if len(groupComparedFiles) == 1 and len(groupComparedFiles[0]) == 0:
+                groupComparedFiles[0].append(fileName)
+                continue
 
-    def getIndexInGroup(self, groupList, cmpIndex):
-        for groupIndex in len(groupList):
-            for fileIndex in group:
-                if groupList[groupIndex][fileIndex] == cmpIndex:
+            for i in range(len(groupComparedFiles)):
+                (groupIndex, fileIndex) = self.getIndexInGroup(groupComparedFiles, fileName)
+                if groupIndex == -1:
+                    if filecmp.cmp(groupComparedFiles[i][0], fileName):
+                        groupComparedFiles[i].append(fileName)
+                        break
+                    else:
+                        groupMap.append(fileName)
+                        groupComparedFiles.append(groupMap)
+
+
+        print("groupComparedFiles:")
+        print(groupComparedFiles)
+        return groupComparedFiles
+
+    def getIndexInGroup(self, groupList, fileName):
+        for groupIndex in range(len(groupList)):
+            for fileIndex in range(len(groupList[groupIndex])):
+                if groupList[groupIndex][fileIndex] == fileName:
                     return (groupIndex, fileIndex)
         return  (-1, -1)
 
@@ -249,64 +269,24 @@ class CompareApp():
                     fileSize = fileNewSize
                     groupList = []
                 groupList.append(self.fileLists[i+1])
+            if len(groupList) > 0:
+                self.groupFiles[fileSize] = groupList
 
-    def groupFileListCompair(self):
-        self.groupCompairIndex=[]
-        for group in self.groupIndex:
-            if(group and len(group)>1):
-                start = group[0]
-                end = group[1]
-                print("compare from "+str(start)+" to "+str(end))
-                self.compairFilesInRange(start, end)
-                print("get contet result")
-                print(self.groupCompairIndex)
-        print("content compair")
-        print(self.groupCompairIndex)
-
-    def compairFilesInRange(self, start, end):
-        if((end-start)==1):
-            indexlist = [start, start+1]
-            self.groupCompairIndex.append(indexlist)
-        elif((end-start)==2 and filecmp.cmp(self.fileLists[start], self.fileLists[start+1])):
-            indexlist = [start, (start+1)]
-            self.groupCompairIndex.append(indexlist)
-        else:
-            allList = []
-            loopList = list(range(start, end-1))
-            for i in loopList:
-                indexlist = [i]
-                exist = False
-                found = False
-                for j in range(start+1, end):
-                    for li in allList:
-                        if((start in li) and (j in li)):
-                            exist = True
-                            if(start in loopList):
-                                loopList.remove(start)
-                            if(j in loopList):
-                                loopList.remove(j)
-                    if (exist):
-                        continue
-                    elif(filecmp.cmp(self.fileLists[start], self.fileLists[j])):
-                        indexlist.append(j)
-                for li in allList:
-                    for i in indexlist:
-                        if(i in li):
-                            found = True;
-                            break
-                    if(found):
-                        break
-                if(not found):
-                    allList.append(indexlist)
-            for singleList in allList:
-                self.groupCompairIndex.append(singleList)
-            orgList = list(range(start, end))
-            for sameList in self.groupCompairIndex:
-                for i in sameList:
-                    if i in(orgList):
-                        orgList.remove(i)
-            for i in orgList:
-                self.groupCompairIndex.append([i,i+1])
+    def deleteSelectedFiles(self):
+        print("enter deleteSelectedFiles")
+        for i in self.checkwithfile.get_children():
+            orgLen = len(self.checkwithfile.get_children(i))
+            newLen = orgLen
+            for item in self.checkwithfile.get_children(i):
+                if self.checkwithfile.tag_has("checked", item):
+                    fileName = self.checkwithfile.item(item)['text']
+                    print(fileName)
+                    os.remove(fileName)
+                    self.checkwithfile.delete(item)
+                    newLen -= 1
+            if orgLen > newLen:
+                text = self.checkwithfile.item(i)['text'].replace("("+str(orgLen)+")", "("+str(newLen)+")")
+                self.checkwithfile.item(i, text=text)
 
 class MyGrid(grid.Grid):
     def __init__(self, parent):
