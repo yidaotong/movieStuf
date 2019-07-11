@@ -7,6 +7,7 @@ import filecmp
 
 from ttkwidgets import Table
 from ttkwidgets import CheckboxTreeview
+import tkinter.scrolledtext as tkscrolled
 
 try:
     import Tkinter as tk
@@ -22,6 +23,7 @@ class CompareApp():
     def __init__(self, master, title):
         #super().__init__(master)
         self.master = master
+        self.pathList = set([])
         self.fileLists = []
         self.groupFiles = {}
         self.InitUI()
@@ -38,7 +40,7 @@ class CompareApp():
         buttons_frame_ipadx = "3m"  ### (3)
         buttons_frame_ipady = "1m"  ### (3)
 
-        self.buttons_frame = tk.Frame(self.wholeContainer, height=80,
+        self.buttons_frame = tk.Frame(self.wholeContainer, height=10,
                                       width=980)  ###
         self.buttons_frame.pack(
             side=tk.TOP,  ###
@@ -50,8 +52,8 @@ class CompareApp():
             padx=buttons_frame_padx,
             pady=buttons_frame_pady,
         )
-        self.button1 = tk.Button(self.buttons_frame, command=self.OnOpen)
-        self.button1.configure(text="Open")
+        self.button1 = tk.Button(self.buttons_frame, command=self.Add)
+        self.button1.configure(text="Add")
         self.button1.focus_force()
         self.button1.configure(
             width=button_width,  ### (1)
@@ -59,29 +61,44 @@ class CompareApp():
             pady=button_pady  ### (2)
         )
         self.button1.pack(side=tk.LEFT)
+        self.button2 = tk.Button(self.buttons_frame, command=self.Remove)
+        self.button2.configure(text="Remove")
+        self.button2.configure(
+            width=6,  ### (1)
+            padx=button_padx,  ### (2)
+            pady=button_pady  ### (2)
+        )
+        self.button2.pack(side=tk.LEFT)
         # top frame
         self.top_frame = tk.Frame(self.wholeContainer, relief=tk.RIDGE,
-                                  height=12050,
+                                  height=250,
                                   width=980, )
         self.top_frame.pack(side=tk.TOP,
                             fill=tk.BOTH,
                             expand=tk.YES,
                             )  ###
+        self.selctedFolder = ""
 
-        self.checkwithfile = CheckboxTreeview(self.top_frame)
-        self.checkwithfile.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+       # self.folderBox.pack(side=tk.LEFT,fill=tk.BOTH,expand=tk.YES,)  ###
+        self.boxScroll = tk.Scrollbar(self.top_frame, orient="vertical")
+       # self.boxScroll.config(command=self.folderBox.yview)
+        self.boxScroll.grid(row=0, column=1, sticky=tk.NW + tk.S)
+        self.folderBox = tk.Listbox(self.top_frame, selectmode=tk.MULTIPLE, relief=tk.RIDGE,
+                                  height=20,
+                                  width=30, yscrollcommand=self.boxScroll.set, )
+        self.folderBox.grid(row=0, column=0, sticky=tk.NW + tk.S)
+        #self.boxScroll.pack(side="right", fill="y")
 
-        # bottom frame
-        self.bottom_frame = tk.Frame(self.wholeContainer,
-                                     relief=tk.RIDGE,
-                                     height=1,
-                                     width=980,
-                                     )  ###
-        self.bottom_frame.pack(side=tk.BOTTOM,
-                               fill=tk.BOTH,
-                               expand=tk.YES,
-                               anchor="w",
-                               )  ###
+        self.checkScroll = tk.Scrollbar(self.top_frame, orient="vertical")
+        self.checkScroll.grid(row=0, column=3, sticky=tk.W, columnspan = 1)
+
+        self.checkwithfile = CheckboxTreeview(self.top_frame, height=20, yscrollcommand=self.checkScroll.set)
+        self.checkwithfile.grid(row=0, column=2, sticky=tk.NW + tk.S, columnspan=200)
+        #self.checkwithfile.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+
+        #self.checkScroll.pack(side="right", fill="y")
+
+
 
         self.btnCompare = tk.Button(self.buttons_frame, command=self.compareFiles)
         self.btnCompare.configure(text="Compare Files")
@@ -92,24 +109,63 @@ class CompareApp():
         self.btnDel.configure(text="Deleted Selected")
         self.btnDel.pack(side=tk.LEFT)
         self.btnCompare.bind("<Return>", self.deleteSelectedFiles)
+        # bottom frame
+        self.bottom_frame = tk.Frame(self.wholeContainer,
+                                     relief=tk.RIDGE,
+                                     height=20,
+                                     width=970,
+                                     )  ###
+        self.bottom_frame.pack(side=tk.BOTTOM,
+                               fill=tk.BOTH,
+                               expand=tk.YES,
+                               )  ###
 
 
-    def OnOpen(self):
+        self.output = tkscrolled.ScrolledText(self.bottom_frame, width=970, height=6, wrap='word')
+        self.output.config(state=tk.DISABLED)
+        self.output.pack(side=tk.LEFT)
+
+
+
+    def Add(self):
 
         # otherwise ask the user what new file to open
         pathname = filedialog.askdirectory()
         print(pathname)
+        if pathname in self.pathList:
+            print("folder already exist" + pathname)
+            return
+        else:
+            self.pathList.add(pathname)
+            for id, path in enumerate(self.pathList):
+                if path == pathname:
+                    self.folderBox.insert(id, pathname)
         if os.path.exists(pathname):
             for i in self.checkwithfile.get_children():
                 self.checkwithfile.delete(i)
-            self.fileLists = []
+            #self.fileLists = {}
             self.groupFiles = {}
         else:
+            print("folder not found:"+pathname)
             return
-        self.getAllFileListByPath(pathname)
+
+        allFiles = set(self.fileLists)
+        allFiles.update(self.getAllFileListByPath(pathname))
+        #print("allFiles:")
+        #print(allFiles)
+        self.fileLists = list(allFiles)
+        #print("converted fileLists:")
+        #print(self.fileLists)
+        self.renewFileList()
+
+    def renewFileList(self):
         fileList = [0 for i in range(len(self.fileLists))]
         for i in range(len(self.fileLists)):
-            fileList[i]=(self.fileLists[i], os.path.getsize(self.fileLists[i]))
+            if os.path.exists(self.fileLists[i]):
+                fileList[i]=(self.fileLists[i], os.path.getsize(self.fileLists[i]))
+            else:
+                print("remove not exist file:"+self.fileLists[i])
+                fileList.pop(i)
         fileList.sort(key=lambda filename: filename[1], reverse=True)
         for i in range(len(fileList)):
             self.fileLists[i] = fileList[i][0]
@@ -147,8 +203,29 @@ class CompareApp():
                 self.checkwithfile.insert(rootIndex, "end", childIndex, text=fileList[i])
             index = index+1
 
+    def Remove(self):
+        print("selected:")
+        for i in self.folderBox.curselection():
+            print(i)
+            filePath = self.folderBox.get(i)
+            print(filePath)
+            self.folderBox.delete(i)
+            self.pathList.remove(filePath)
+        #selected_text_list = [self.folderBox.get(i) for i in self.folderBox.curselection()]
+        #print(selected_text_list)
+        for i in self.checkwithfile.get_children():
+            self.checkwithfile.delete(i)
+        # self.fileLists = {}
+        self.groupFiles = {}
+        if len(self.pathList) > 0:
+            allFiles = set([])
+            for pathname in self.pathList:
+                allFiles.update(self.getAllFileListByPath(pathname))
+            self.fileLists = list(allFiles)
+            self.renewFileList()
 
     def getAllFileListByPath(self, pathname):
+        fileSet = set([])
         try:
             if os.path.isdir(pathname):
                 fileList = os.listdir(pathname)
@@ -160,15 +237,17 @@ class CompareApp():
                 for file in fileList:
                     if not file.startswith('.'):
                         fullPath = os.path.join(pathname, file)
-                        if os.path.isdir(fullPath):
-                            self.getAllFileListByPath(fullPath)
-                        else:
-                            self.fileLists.append(fullPath)
-            else:
-                self.fileLists.append(pathname)
+                        if os.path.exists(fullPath):
+                            if os.path.isdir(fullPath):
+                                fileSet.update(self.getAllFileListByPath(fullPath))
+                            else:
+                                fileSet.add(fullPath)
+            elif os.path.exists(pathname):
+                fileSet.add(pathname)
 
         except IOError:
             wx.LogError("Cannot open Directoy '%s'." % pathname)
+        return fileSet
 
     def compareFiles(self):
         print("compare")
@@ -237,6 +316,11 @@ class CompareApp():
             for i in range(len(groupComparedFiles)):
                 (groupIndex, fileIndex) = self.getIndexInGroup(groupComparedFiles, fileName)
                 if groupIndex == -1:
+                    outputStr = "Comparing: " + groupComparedFiles[i][0] + " and " + fileName + "\n"
+                    self.output.config(state=tk.NORMAL)
+                    self.output.insert("end", outputStr)
+                    self.output.see("end")
+                    self.output.config(state=tk.DISABLED)
                     if filecmp.cmp(groupComparedFiles[i][0], fileName):
                         groupComparedFiles[i].append(fileName)
                         break
@@ -379,6 +463,6 @@ class MyGrid(grid.Grid):
 
 if __name__ == '__main__':
     root = tk.Tk()
-    root.geometry('1000x300')
+    root.geometry('1000x600')
     app = CompareApp(root, "test")
     root.mainloop()
