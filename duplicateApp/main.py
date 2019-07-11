@@ -1,5 +1,7 @@
 import wx
 import os
+import sys
+import stat
 
 import wx.grid as grid
 import wx.lib.inspection
@@ -131,6 +133,7 @@ class CompareApp():
 
         # otherwise ask the user what new file to open
         pathname = filedialog.askdirectory()
+        pathname = os.path.abspath(pathname)
         print(pathname)
         if pathname in self.pathList:
             print("folder already exist" + pathname)
@@ -236,7 +239,7 @@ class CompareApp():
 
                 for file in fileList:
                     if not file.startswith('.'):
-                        fullPath = os.path.join(pathname, file)
+                        fullPath = pathname + os.sep +  file
                         if os.path.exists(fullPath):
                             if os.path.isdir(fullPath):
                                 fileSet.update(self.getAllFileListByPath(fullPath))
@@ -365,6 +368,7 @@ class CompareApp():
                 if self.checkwithfile.tag_has("checked", item):
                     fileName = self.checkwithfile.item(item)['text']
                     print(fileName)
+                    os.chmod(fileName, stat.S_IWUSR)
                     os.remove(fileName)
                     self.checkwithfile.delete(item)
                     newLen -= 1
