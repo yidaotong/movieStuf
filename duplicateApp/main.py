@@ -2,12 +2,8 @@ import wx
 import os
 import sys
 import stat
-
-import wx.grid as grid
 import wx.lib.inspection
 import filecmp
-
-from ttkwidgets import Table
 from ttkwidgets import CheckboxTreeview
 import tkinter.scrolledtext as tkscrolled
 
@@ -23,8 +19,8 @@ except ImportError:
 class CompareApp():
 
     def __init__(self, master, title):
-        #super().__init__(master)
         self.master = master
+        self.master.title(title)
         self.pathList = set([])
         self.fileLists = []
         self.groupFiles = {}
@@ -71,36 +67,6 @@ class CompareApp():
             pady=button_pady  ### (2)
         )
         self.button2.pack(side=tk.LEFT)
-        # top frame
-        self.top_frame = tk.Frame(self.wholeContainer, relief=tk.RIDGE,
-                                  height=250,
-                                  width=980, )
-        self.top_frame.pack(side=tk.TOP,
-                            fill=tk.BOTH,
-                            expand=tk.YES,
-                            )  ###
-        self.selctedFolder = ""
-
-       # self.folderBox.pack(side=tk.LEFT,fill=tk.BOTH,expand=tk.YES,)  ###
-        self.boxScroll = tk.Scrollbar(self.top_frame, orient="vertical")
-       # self.boxScroll.config(command=self.folderBox.yview)
-        self.boxScroll.grid(row=0, column=1, sticky=tk.NW + tk.S)
-        self.folderBox = tk.Listbox(self.top_frame, selectmode=tk.MULTIPLE, relief=tk.RIDGE,
-                                  height=20,
-                                  width=30, yscrollcommand=self.boxScroll.set, )
-        self.folderBox.grid(row=0, column=0, sticky=tk.NW + tk.S)
-        #self.boxScroll.pack(side="right", fill="y")
-
-        self.checkScroll = tk.Scrollbar(self.top_frame, orient="vertical")
-        self.checkScroll.grid(row=0, column=3, sticky=tk.W, columnspan = 1)
-
-        self.checkwithfile = CheckboxTreeview(self.top_frame, height=20, yscrollcommand=self.checkScroll.set)
-        self.checkwithfile.grid(row=0, column=2, sticky=tk.NW + tk.S, columnspan=200)
-        #self.checkwithfile.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
-
-        #self.checkScroll.pack(side="right", fill="y")
-
-
 
         self.btnCompare = tk.Button(self.buttons_frame, command=self.compareFiles)
         self.btnCompare.configure(text="Compare Files")
@@ -111,11 +77,50 @@ class CompareApp():
         self.btnDel.configure(text="Deleted Selected")
         self.btnDel.pack(side=tk.LEFT)
         self.btnCompare.bind("<Return>", self.deleteSelectedFiles)
+
+        # top frame
+        self.top_frame = tk.Frame(self.wholeContainer, relief=tk.RIDGE,
+                                  height=100,
+                                  width=980,padx=10, pady=10)
+        self.top_frame.pack(side=tk.TOP,
+                            fill=tk.BOTH,
+                            expand=tk.YES,
+                            )  ###
+        # left frame
+        self.left_frame = tk.Frame(self.top_frame, relief=tk.RIDGE,
+                                  height=100,
+                                  width=500, )
+        self.left_frame.grid(row=0, column=0, sticky=("nsew"))
+        # right frame
+        self.right_frame = tk.Frame(self.top_frame, relief=tk.RIDGE,
+                                  height=100,
+                                  width=100, )
+        self.right_frame.grid(row=0, column=1, sticky=("nsew"))
+        self.top_frame.columnconfigure(0, weight=1)
+        self.top_frame.rowconfigure(0, weight=1)
+        self.top_frame.columnconfigure(1, weight=2)
+        self.top_frame.rowconfigure(1, weight=2)
+
+
+        self.boxScroll = tk.Scrollbar(self.left_frame, orient="vertical", command=self.boxScrollFun)
+        self.boxScroll.pack(side=tk.RIGHT,fill=tk.BOTH,expand=tk.NO,)
+        self.folderBox = tk.Listbox(self.left_frame, selectmode=tk.MULTIPLE, relief=tk.RIDGE,
+                                  height=20,
+                                  width=10, yscrollcommand=self.boxScroll.set, )
+        self.folderBox.pack(side=tk.LEFT,fill=tk.BOTH,expand=tk.YES,)
+        #self.boxScroll.pack(side="right", fill="y")
+
+        self.checkScroll = tk.Scrollbar(self.right_frame, orient="vertical", command=self.checkScrollFun)
+        self.checkScroll.pack(side=tk.RIGHT,fill=tk.BOTH,expand=tk.NO,)
+
+        self.checkwithfile = CheckboxTreeview(self.right_frame, height=20, yscrollcommand=self.checkScroll.set)
+        self.checkwithfile.pack(side=tk.LEFT,fill=tk.BOTH,expand=tk.YES,)
+
         # bottom frame
         self.bottom_frame = tk.Frame(self.wholeContainer,
                                      relief=tk.RIDGE,
                                      height=20,
-                                     width=970,
+                                     width=970,padx=10, pady=10
                                      )  ###
         self.bottom_frame.pack(side=tk.BOTTOM,
                                fill=tk.BOTH,
@@ -123,11 +128,16 @@ class CompareApp():
                                )  ###
 
 
-        self.output = tkscrolled.ScrolledText(self.bottom_frame, width=970, height=6, wrap='word')
+        self.output = tkscrolled.ScrolledText(self.bottom_frame, width=970, height=20, wrap='word')
         self.output.config(state=tk.DISABLED)
         self.output.pack(side=tk.LEFT)
 
 
+    def boxScrollFun(self, *args):
+        return self.folderBox.yview
+
+    def checkScrollFun(self, *args):
+        return self.checkwithfile.yview
 
     def Add(self):
 
@@ -376,97 +386,8 @@ class CompareApp():
                 text = self.checkwithfile.item(i)['text'].replace("("+str(orgLen)+")", "("+str(newLen)+")")
                 self.checkwithfile.item(i, text=text)
 
-class MyGrid(grid.Grid):
-    def __init__(self, parent):
-        grid.Grid.__init__(self, parent, -1, pos=(10,40), size=(420,95))
-        self.Bind(grid.EVT_GRID_SELECT_CELL,self.onCellSelected)
-        self.Bind(grid.EVT_GRID_CELL_LEFT_CLICK,self.onMouse)
-        self.Bind(grid.EVT_GRID_EDITOR_CREATED, self.onEditorCreated)
-        self.CreateGrid(0,3)
-        self.RowLabelSize = 0
-        #self.ColLabelSize = 20
-        self.SetColLabelValue(0, ' ')
-        self.SetColLabelValue(1, 'file name')
-        self.SetColLabelValue(2, 'file size')
-        self.AutoSizeColumn(0, False)
-        self.SetColSize(0, 24)
-        self.SetColSize(1, 1060)
-        self.SetColMinimalWidth(2, 100)
-
-    def setAttribute(self):
-
-        attr = grid.GridCellAttr()
-        attr.SetEditor(grid.GridCellBoolEditor())
-        attr.SetRenderer(grid.GridCellBoolRenderer())
-        self.SetColAttr(0,attr)
-        attr = grid.GridCellAttr()
-        attr.SetReadOnly(True)
-        self.SetColAttr(1, attr)
-        self.SetColAttr(2, attr)
-
-        attr = grid.GridCellAttr()
-        #attr.SetBackgroundColour("pink")
-        self.SetRowAttr(1, attr)
-
-    def addRow(self, rowIndex, filepath, size):
-        self.SetCellValue(rowIndex, 1, filepath)
-        self.SetCellValue(rowIndex, 2, size)
-
-
-    def onMouse(self,evt):
-        print("mouse event")
-        print(evt)
-        if evt.Col == 0:
-            wx.CallLater(100, self.toggleCheckBox)
-        evt.Skip()
-
-    def toggleCheckBox(self):
-        print("cb value:"+str(self.cb.Value))
-        self.cb.Value = not self.cb.Value
-        self.afterCheckBox(self.cb.Value)
-
-    def onCellSelected(self,evt):
-        if evt.Col == 0:
-            wx.CallAfter(self.EnableCellEditControl)
-        evt.Skip()
-
-    def onEditorCreated(self,evt):
-        if evt.Col == 0:
-            self.cb = evt.Control
-            self.cb.WindowStyle |= wx.WANTS_CHARS
-            self.cb.Bind(wx.EVT_KEY_DOWN,self.onKeyDown)
-            self.cb.Bind(wx.EVT_CHECKBOX,self.onCheckBox)
-        evt.Skip()
-
-    def onKeyDown(self,evt):
-        if evt.KeyCode == wx.WXK_UP:
-            if self.GridCursorRow > 0:
-                self.DisableCellEditControl()
-                self.MoveCursorUp(False)
-        elif evt.KeyCode == wx.WXK_DOWN:
-            if self.GridCursorRow < (self.NumberRows-1):
-                self.DisableCellEditControl()
-                self.MoveCursorDown(False)
-        elif evt.KeyCode == wx.WXK_LEFT:
-            if self.GridCursorCol > 0:
-                self.DisableCellEditControl()
-                self.MoveCursorLeft(False)
-        elif evt.KeyCode == wx.WXK_RIGHT:
-            if self.GridCursorCol < (self.NumberCols-1):
-                self.DisableCellEditControl()
-                self.MoveCursorRight(False)
-        else:
-            evt.Skip()
-
-    def onCheckBox(self,evt):
-        self.afterCheckBox(evt.IsChecked())
-
-    def afterCheckBox(self,isChecked):
-        print('afterCheckBox',self.GridCursorRow,isChecked)
-
-
 if __name__ == '__main__':
     root = tk.Tk()
     root.geometry('1000x600')
-    app = CompareApp(root, "test")
+    app = CompareApp(root, "Duplicate Files Remover")
     root.mainloop()
