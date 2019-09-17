@@ -6,6 +6,7 @@ import wx.lib.inspection
 import filecmp
 from ttkwidgets import CheckboxTreeview
 import tkinter.scrolledtext as tkscrolled
+import threading
 
 try:
     import Tkinter as tk

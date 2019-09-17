@@ -1,125 +1,100 @@
 from tkinter import *
 
 
-class MyApp:
-    def __init__(self, parent):
+class MultiListbox(Frame):
+    def __init__(self, master, lists):
+        Frame.__init__(self, master)
+        self.lists = []
+        for l, w in lists:
+            frame = Frame(self);
+            frame.pack(side=LEFT, expand=YES, fill=BOTH)
+            Label(frame, text=l, borderwidth=1, relief=RAISED).pack(fill=X)
+            lb = Listbox(frame, width=w, borderwidth=0, selectborderwidth=0,
+                         relief=FLAT, exportselection=FALSE)
+            lb.pack(expand=YES, fill=BOTH)
+            self.lists.append(lb)
+            lb.bind('<B1-Motion>', lambda e, s=self: s._select(e.y))
+            lb.bind('<Button-1>', lambda e, s=self: s._select(e.y))
+            lb.bind('<Leave>', lambda e: 'break')
+            lb.bind('<B2-Motion>', lambda e, s=self: s._b2motion(e.x, e.y))
+            lb.bind('<Button-2>', lambda e, s=self: s._button2(e.x, e.y))
+        frame = Frame(self);
+        frame.pack(side=LEFT, fill=Y)
+        Label(frame, borderwidth=1, relief=RAISED).pack(fill=X)
+        sb = Scrollbar(frame, orient=VERTICAL, command=self._scroll)
+        sb.pack(expand=YES, fill=Y)
+        self.lists[0]['yscrollcommand'] = sb.set
 
-        self.myParent = parent
+    def _select(self, y):
+        row = self.lists[0].nearest(y)
+        self.selection_clear(0, END)
+        self.selection_set(row)
+        return 'break'
 
-        ### Our topmost frame is called myContainer1
-        self.myContainer1 = Frame(parent)  ###
-        self.myContainer1.pack()
+    def _button2(self, x, y):
+        for l in self.lists: l.scan_mark(x, y)
+        return 'break'
 
-        # ------ constants for controlling layout ------
-        button_width = 6  ### (1)
+    def _b2motion(self, x, y):
+        for l in self.lists: l.scan_dragto(x, y)
+        return 'break'
 
-        button_padx = "2m"  ### (2)
-        button_pady = "1m"  ### (2)
+    def _scroll(self, *args):
+        for l in self.lists:
+            apply(l.yview, args)
 
-        buttons_frame_padx = "3m"  ### (3)
-        buttons_frame_pady = "2m"  ### (3)
-        buttons_frame_ipadx = "3m"  ### (3)
-        buttons_frame_ipady = "1m"  ### (3)
-        # -------------- end constants ----------------
+    def curselection(self):
+        return self.lists[0].curselection()
 
-        ### We will use VERTICAL (top/bottom) orientation inside myContainer1.
-        ### Inside myContainer1, first we create buttons_frame.
-        ### Then we create top_frame and bottom_frame.
-        ### These will be our demonstration frames.
+    def delete(self, first, last=None):
+        for l in self.lists:
+            l.delete(first, last)
 
-        # buttons frame
-        self.buttons_frame = Frame(self.myContainer1)  ###
-        self.buttons_frame.pack(
-            side=TOP,  ###
-            ipadx=buttons_frame_ipadx,
-            ipady=buttons_frame_ipady,
-            padx=buttons_frame_padx,
-            pady=buttons_frame_pady,
-        )
+    def get(self, first, last=None):
+        result = []
+        for l in self.lists:
+            result.append(l.get(first, last))
+        if last: return apply(map, [None] + result)
+        return result
 
-        # top frame
-        self.top_frame = Frame(self.myContainer1)
-        self.top_frame.pack(side=TOP,
-                            fill=BOTH,
-                            expand=YES,
-                            )  ###
+    def index(self, index):
+        self.lists[0].index(index)
 
-        # bottom frame
-        self.bottom_frame = Frame(self.myContainer1,
-                                  borderwidth=5, relief=RIDGE,
-                                  height=50,
-                                  background="white",
-                                  )  ###
-        self.bottom_frame.pack(side=TOP,
-                               fill=BOTH,
-                               expand=YES,
-                               )  ###
+    def insert(self, index, *elements):
+        for e in elements:
+            i = 0
+            for l in self.lists:
+                l.insert(index, e[i])
+                i = i + 1
 
-        ### Now we will put two more frames, left_frame and right_frame,
-        ### inside top_frame.  We will use HORIZONTAL (left/right)
-        ### orientation within top_frame.
+    def size(self):
+        return self.lists[0].size()
 
-        # left_frame
-        self.left_frame = Frame(self.top_frame, background="red",
-                                borderwidth=5, relief=RIDGE,
-                                height=250,
-                                width=50,
-                                )  ###
-        self.left_frame.pack(side=LEFT,
-                             fill=BOTH,
-                             expand=YES,
-                             )  ###
+    def see(self, index):
+        for l in self.lists:
+            l.see(index)
 
-        ### right_frame
-        self.right_frame = Frame(self.top_frame, background="tan",
-                                 borderwidth=5, relief=RIDGE,
-                                 width=250,
-                                 )
-        self.right_frame.pack(side=RIGHT,
-                              fill=BOTH,
-                              expand=YES,
-                              )  ###
+    def selection_anchor(self, index):
+        for l in self.lists:
+            l.selection_anchor(index)
 
-        # now we add the buttons to the buttons_frame
-        self.button1 = Button(self.buttons_frame, command=self.button1Click)
-        self.button1.configure(text="OK", background="green")
-        self.button1.focus_force()
-        self.button1.configure(
-            width=button_width,  ### (1)
-            padx=button_padx,  ### (2)
-            pady=button_pady  ### (2)
-        )
+    def selection_clear(self, first, last=None):
+        for l in self.lists:
+            l.selection_clear(first, last)
 
-        self.button1.pack(side=LEFT)
-        self.button1.bind("<Return>", self.button1Click_a)
+    def selection_includes(self, index):
+        return self.lists[0].selection_includes(index)
 
-        self.button2 = Button(self.buttons_frame, command=self.button2Click)
-        self.button2.configure(text="Cancel", background="red")
-        self.button2.configure(
-            width=button_width,  ### (1)
-            padx=button_padx,  ### (2)
-            pady=button_pady  ### (2)
-        )
-
-        self.button2.pack(side=RIGHT)
-        self.button2.bind("<Return>", self.button2Click_a)
-
-    def button1Click(self):
-        if self.button1["background"] == "green":
-            self.button1["background"] = "yellow"
-        else:
-            self.button1["background"] = "green"
-
-    def button2Click(self):
-        self.myParent.destroy()
-
-    def button1Click_a(self, event):
-        self.button1Click()
-
-    def button2Click_a(self, event):
-        self.button2Click()
+    def selection_set(self, first, last=None):
+        for l in self.lists:
+            l.selection_set(first, last)
 
 
-root = Tk()
-myapp = MyApp(root)
-root.mainloop()
+if __name__ == '__main__':
+    tk = Tk()
+    Label(tk, text='MultiListbox').pack()
+    mlb = MultiListbox(tk, (('Subject', 40), ('Sender', 20), ('Date', 10)))
+    for i in range(1000):
+        mlb.insert(END, ('Important Message: %d' % i, 'John Doe', '10/10/%04d' % (1900 + i)))
+    mlb.pack(expand=YES, fill=BOTH)
+    tk.mainloop()

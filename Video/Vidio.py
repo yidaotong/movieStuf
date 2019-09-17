@@ -31,7 +31,8 @@ class Vidio:
             self.rootLink = 'http://www.sis001.us/bbs/'
         self.asiaMovie='forum-143'
         self.movieMapQueqe = {}
-        self.maxPageCount = 50
+        self.minPageCount = 1
+        self.maxPageCount = 1
         self.downFolder='D:/github/'
 
     def fetchPage(self, url):
@@ -51,7 +52,7 @@ class Vidio:
         chrome_options.add_argument('--disable-gpu')
         # chrome_options.add_argument("--proxy-server=127.0.0.1:8080")
         driver = webdriver.Chrome(options=chrome_options, desired_capabilities=capabilities)
-        for i in range(1,self.maxPageCount+1):
+        for i in range(self.minPageCount, self.maxPageCount+1):
             url=self.rootLink+self.asiaMovie+'-'+str(i)+'.html'
             #url='http://www.sis001.us/bbs/forum-143-5.html'
             print(url)
@@ -93,7 +94,7 @@ class Vidio:
         driver.close()
         driver.quit()
 
-    def getAllDownloadLink(self):
+    def getAllDownloadLink(self, c = False):
         capabilities = DesiredCapabilities.CHROME.copy()
         capabilities['acceptSslCerts'] = True
         capabilities['acceptInsecureCerts'] = True
@@ -105,8 +106,18 @@ class Vidio:
         #chrome_options.add_argument('--headless')
         chrome_options.add_argument('--disable-gpu')
         # chrome_options.add_argument("--proxy-server=127.0.0.1:8080")
-        driver = webdriver.Chrome(options=chrome_options, desired_capabilities=capabilities)
         for type in self.movieMapQueqe.keys():
+            if downloadDirectly == True:
+                folder = self.downFolder + type
+                if not os.path.exists(folder):
+                    os.makedirs(folder)
+                chrome_options.add_experimental_option("prefs", {
+                    "download.default_directory": folder,
+                    "download.prompt_for_download": False,
+                    "download.directory_upgrade": True,
+                    "safebrowsing.enabled": True
+                })
+            driver = webdriver.Chrome(options=chrome_options, desired_capabilities=capabilities)
             for movie in self.movieMapQueqe[type]:
                 print('get downlink:')
                 link=movie['link']
@@ -126,7 +137,11 @@ class Vidio:
                         '//div[@class="card-body"]/a[@class="btn btn-danger"]')
                             downClickLink=clickButton.get_attribute('href')
                             print(downClickLink)
-                            movie['down']=[name,downClickLink]
+
+                            movie['down']=[name, downClickLink]
+                            if downloadDirectly == True:
+                                clickButton.click()
+
                             #driver.get(downClickLink)
                 except:
                     pass
@@ -220,7 +235,9 @@ if __name__=='__main__':
     vidio.fetchAllMoiveLink()
     t2 = time.time()
     t=t2-t1
-    vidio.getAllDownloadLink()
-    vidio.downLoadAll()
+    downloadDirectly = True
+    vidio.getAllDownloadLink(downloadDirectly)
+    if not downloadDirectly:
+        vidio.downLoadAll()
     print(vidio.getMovieQueue())
     print(t)
